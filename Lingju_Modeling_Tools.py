@@ -1,11 +1,11 @@
 # coding: utf-8
 """
     Author: Reggie Tu
-Date: July 31, 2024
+Date: May 21, 2025
 
-version: v1.05
-     1. add function - match vertex normal
-        (select which object's vertex needs to be change first, then select the other object's vertex, finally you can select another vertexs by lasso tool)
+version: v1.06
+     1. add function - snap to plane
+        (Select 3 points to define a plane, then select the vertices to snap)
 """
 
 import maya.cmds as cmds
@@ -1566,6 +1566,75 @@ class Round_Inset:
         cmds.floatSliderGrp('rInsetV', e=1, en=1)
 
 
+class Snap_2_Plane:
+    def get_selected_points(self):
+        selection = cmds.ls(selection=True, flatten=True)
+        for mask in [31, 28, 30]:
+            verts = cmds.filterExpand(selection, selectionMask=mask)
+            if verts:
+                return verts
+        return []
+
+    def plane_normal(self, vtx1, vtx2, vtx3):
+        v1 = vtx2 - vtx1
+        v2 = vtx3 - vtx1
+        normal = v1 ^ v2
+        normal.normalize()
+        return normal
+
+    def plane_dist(self, normal, vtx):
+        return -(normal * vtx)
+
+    def plane_vtx_dist(self, vtx, normal, plane_vtx):
+        D = self.plane_dist(normal, plane_vtx)
+        return normal * vtx + D
+
+    def define_plane(self, *args):
+        verts = self.get_selected_points()
+        if len(verts) != 3:
+            if cmds.objExists(self.info_text):
+                cmds.inViewMessage(msg=u"选择三个点定义平面!",
+                    pos="topRight", bkc=0xCC7F00, fit=20, fade=True, fontSize=11)
+            cmds.inViewMessage(msg=u"选择三个点定义一个平面!",
+                pos="topRight", bkc=0xCC7F00, fit=20, fade=True, fontSize=11)
+            return
+        for i in range(3):
+            pos = cmds.pointPosition(verts[i])
+            self.m_vPlane[i] = om.MVector(*pos)
+        if cmds.objExists(self.info_text):
+            cmds.inViewMessage(msg=u"平面已定义!",
+                pos="topRight", bkc=0x00FF00, fit=20, fade=True, fontSize=11)
+        cmds.inViewMessage(msg=u"平面已定义!",
+                pos="topRight", bkc=0x238E23, fit=20, fade=True, fontSize=11)
+        
+    def snap_plane_cmd(self, *args):
+        verts = self.get_selected_points()
+        if not verts:
+            cmds.warning("No points selected to snap.")
+            return
+        normal = self.plane_normal(self.m_vPlane[0], self.m_vPlane[1], self.m_vPlane[2])
+        for vert in verts:
+            pos = cmds.pointPosition(vert)
+            vert_pos = om.MVector(*pos)
+            dist = self.plane_vtx_dist(vert_pos, normal, self.m_vPlane[0])
+            move_vector = normal * (-dist)
+            cmds.move(move_vector.x, move_vector.y, move_vector.z, vert, relative=True)
+
+    def create_plane_ui(self):
+        self.window = "SnapToPlaneWindow"
+        self.info_text = "SnapToPlaneInfoText"
+
+        if cmds.window(self.window, exists=True):
+            cmds.deleteUI(self.window)
+
+        self.m_vPlane = [om.MVector(), om.MVector(), om.MVector()]
+        cmds.window(self.window, title="Snap to Plane")
+        cmds.columnLayout(adjustableColumn=True)
+        cmds.button(label=u"定义平面", w=100,command=self.define_plane, bgc=(0.31, 0.32, 0.35))
+        cmds.button(label=u"吸附到平面", w=100, command=self.snap_plane_cmd, bgc=(0.31, 0.32, 0.35))
+        cmds.showWindow()
+
+
 class LingJuGeometryTools:
     LJGT_WINDOW_NAME = "LingJuGeometryTools_Window"
 
@@ -1584,7 +1653,7 @@ class LingJuGeometryTools:
         self.EVEN_EDGE_LOOP = Even_Edge_Loop()
         self.ROUND_INSET = Round_Inset()
         self.FILL_SELECTION = Fill_Selection()
-        # self.FLATTEN_COMPONENTS = Flatten_Components()
+        self.SNAP_2_PLANE = Snap_2_Plane()
 
         self.grey_blue = (0.198, 0.218, 0.238)
         self.grey = (0.31, 0.32, 0.35)
@@ -1603,7 +1672,7 @@ class LingJuGeometryTools:
             cmds.deleteUI(LingJuGeometryTools.LJGT_WINDOW_NAME)
 
         cmds.workspaceControl(LingJuGeometryTools.LJGT_WINDOW_NAME,
-                              label=u"成都零距数码工具集v104",
+                              label=u"成都零距数码工具集v106",
                               retain=True,
                               initialWidth=330,
                               minimumWidth=300,
@@ -1860,9 +1929,17 @@ class LingJuGeometryTools:
         cmds.button(label=u"顶点法线对齐", command=lambda *args: self.match_vertex_normal(),
                     width=149, height=28, bgc=self.grey)
 
-        cmds.button(label=u"测试", command=lambda *args: self.test(),
+        cmds.button(label=u"吸附平面", command=lambda *args: self.SNAP_2_PLANE.create_plane_ui(),
                     width=149, height=28, bgc=self.grey)
 
+        cmds.setParent('..')
+
+        cmds.rowLayout(numberOfColumns=2)
+        cmds.button(label=u"测试", command=lambda *args: self.test(),
+            width=149, height=28, bgc=self.grey)
+        cmds.button(label=u"测试", command=lambda *args: self.test(),
+            width=149, height=28, bgc=self.grey)
+        
         cmds.setParent('..')
 
         cmds.text(label=" ", height=10)
@@ -2766,4 +2843,3 @@ class LingJuGeometryTools:
 
 
 lingju_geometry_tools = LingJuGeometryTools()
-
