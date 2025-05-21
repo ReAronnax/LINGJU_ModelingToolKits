@@ -3,13 +3,10 @@
     Author: Reggie Tu
 Date: July 31, 2024
 
-version: v1.04
-     1. update UI
-     2. update smart clean combine(now can merge)
-     3. add split around component
-     4.
+version: v1.05
+     1. add function - match vertex normal
+        (select which object's vertex needs to be change first, then select the other object's vertex, finally you can select another vertexs by lasso tool)
 """
-
 
 import maya.cmds as cmds
 import re
@@ -28,6 +25,7 @@ import string
 class BaseAlign:
 
     def alignEdge(self):
+        global outParent
         mesh = cmds.ls(sl=1, fl=1)
         if len(mesh) == 1:
             checkLongName = cmds.ls(mesh[0], l=1)
@@ -94,7 +92,7 @@ class BaseAlign:
             closestPoint = om.MPoint()
             closestPoint = omCurveOut.closestPoint(pointInSpace)
             getDist = math.sqrt(((closestPoint[0] - gHitP[0]) ** 2) + ((closestPoint[1] - gHitP[1]) ** 2) + (
-                        (closestPoint[2] - gHitP[2]) ** 2))
+                    (closestPoint[2] - gHitP[2]) ** 2))
             if getDist < smallestDist:
                 smallestDist = getDist
                 cEdge = l
@@ -202,7 +200,8 @@ class Instant_Drag(BaseAlign):
         storeHitFace = ''
         if cmds.draggerContext(ctx, exists=True):
             cmds.deleteUI(ctx)
-        cmds.draggerContext(ctx, pressCommand=self.instDragPick, rc=self.instDragClean, dragCommand=self.instDragMove, name=ctx,
+        cmds.draggerContext(ctx, pressCommand=self.instDragPick, rc=self.instDragClean, dragCommand=self.instDragMove,
+                            name=ctx,
                             cursor='crossHair', undoMode='step')
         cmds.setToolTo(ctx)
 
@@ -448,7 +447,7 @@ class Instant_Drag(BaseAlign):
                             z = hitpoint.z
                             distanceBetween = math.sqrt(
                                 ((float(storeCameraPosition[0]) - x) ** 2) + (
-                                            (float(storeCameraPosition[1]) - y) ** 2) + (
+                                        (float(storeCameraPosition[1]) - y) ** 2) + (
                                         (float(storeCameraPosition[2]) - z) ** 2))
                             if distanceBetween < shortDistance:
                                 shortDistance = distanceBetween
@@ -709,7 +708,6 @@ class Fill_Selection:
         self.selection_fill_start()
         cmds.scriptJob(runOnce=True, event=["SelectionChanged", self.selection_fill_finish])
 
-
     def selection_fill_start(self):
         sel_edges = cmds.filterExpand(expand=True, selectionMask=32) or []
         if not sel_edges:
@@ -732,7 +730,6 @@ class Fill_Selection:
         cmds.polySelectConstraint(type=0x0008, shell=True, mode=3)
         cmds.select(clear=True)
 
-
     def selection_fill_finish(self):
         fill_selection = cmds.ls(selection=True)
         cmds.polySelectConstraint(shell=False)
@@ -743,7 +740,6 @@ class Fill_Selection:
 
         if fill_selection:
             cmds.select(fill_selection)
-
 
     def reset_poly_select_constraint(self):
         cmds.polySelectConstraint(mode=0, type=0, shell=False)
@@ -1729,6 +1725,10 @@ class LingJuGeometryTools:
         cmds.setParent('..')
         cmds.setParent('..')
 
+    """
+        ------------------------------------ Buttons ------------------------------------
+    """
+
     def create_select_similar_buttons(self):
         cmds.columnLayout()
         cmds.button(label=u"选择相似物体", command=lambda *args: self.select_similar_mesh(mode=self.mode),
@@ -1753,7 +1753,7 @@ class LingJuGeometryTools:
                                                  minValue=0, maxValue=180, fieldMinValue=0,
                                                  value=25, width=250,
                                                  cc=lambda *args: self.update_angle(
-                                                 cmds.intSliderGrp(angleByNormalsSlider, q=True, value=True)))
+                                                     cmds.intSliderGrp(angleByNormalsSlider, q=True, value=True)))
 
         cmds.button(label=u"选择",
                     bgc=self.inner_grey,
@@ -1857,7 +1857,7 @@ class LingJuGeometryTools:
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"测试", command=lambda *args: self.test(),
+        cmds.button(label=u"顶点法线对齐", command=lambda *args: self.match_vertex_normal(),
                     width=149, height=28, bgc=self.grey)
 
         cmds.button(label=u"测试", command=lambda *args: self.test(),
@@ -1876,10 +1876,7 @@ class LingJuGeometryTools:
         cmds.button(label=u"沿最近边对齐", command=lambda *args: self.ALIGN_EDGE.alignEdge(),
                     width=149, height=28, bgc=self.grey)
 
-
         cmds.setParent('..')
-
-
 
     def create_pivot_buttons(self):
         cmds.rowLayout(numberOfColumns=3, )
@@ -2027,7 +2024,8 @@ class LingJuGeometryTools:
                         gd_children = []
 
                         for child in children:
-                            if cmds.objectType(child, isType='transform') and not cmds.listRelatives(child, shapes=True):
+                            if cmds.objectType(child, isType='transform') and not cmds.listRelatives(child,
+                                                                                                     shapes=True):
                                 continue
                             gd_children.append(child)
 
@@ -2525,7 +2523,6 @@ class LingJuGeometryTools:
         cmds.ConvertSelectionToEdges()
         expandedEdges = cmds.ls(selection=True, fl=True)
 
-
         if originalEdges:
             cmds.select(deselect=True, *originalEdges)
 
@@ -2554,7 +2551,6 @@ class LingJuGeometryTools:
 
         if originalEdges:
             cmds.select(deselect=True, *originalEdges)
-
 
         cmds.ls(selection=True, fl=True)
 
@@ -2594,6 +2590,122 @@ class LingJuGeometryTools:
             intFaceList = cmds.polyListComponentConversion(ff=True, tf=True, internal=True)
             cmds.select(extrude[0], add=True)
             cmds.ShowManipulatorTool()
+
+    # --------------------- match_vertex_normal
+    def get_face_area(self, mesh_fn, face_id):
+        """ 计算多边形面的面积（替代不存在的 getFaceArea 方法） """
+        vertices = mesh_fn.getPolygonVertices(face_id)
+        points = mesh_fn.getPoints(oma.MSpace.kWorld)
+
+        vec_points = [oma.MVector(points[v]) for v in vertices]
+
+        total_area = 0.0
+        for i in range(1, len(vec_points) - 1):
+            v0 = vec_points[0]
+            v1 = vec_points[i]
+            v2 = vec_points[i + 1]
+
+            cross = (v1 - v0) ^ (v2 - v0)
+            total_area += cross.length() / 2.0
+
+        return total_area
+
+    def transfer_vertex_normals(self, source_vtx, target_vtx):
+        source_mesh = source_vtx.split('.')[0]
+        source_id = int(source_vtx.split('[')[1].split(']')[0])
+
+        sel_list = oma.MSelectionList()
+        sel_list.add(source_mesh)
+        source_dag = sel_list.getDagPath(0)
+        source_fn = oma.MFnMesh(source_dag)
+
+        connected_faces = cmds.polyListComponentConversion(source_vtx, fv=True, tf=True)
+        connected_faces = cmds.ls(connected_faces, fl=True)
+
+        weighted_normals = []
+        for face in connected_faces:
+            face_id = int(face.split('[')[1].split(']')[0])
+
+            face_area = self.get_face_area(source_fn, face_id)
+            normal = source_fn.getFaceVertexNormal(face_id, source_id, oma.MSpace.kWorld)
+            weighted_normals.append(normal * face_area)
+
+        avg_normal = sum(weighted_normals, oma.MVector(0, 0, 0))
+        avg_normal.normalize()
+
+        target_mesh = target_vtx.split('.')[0]
+        target_id = int(target_vtx.split('[')[1].split(']')[0])
+
+        sel_list.clear()
+        sel_list.add(target_mesh)
+        target_dag = sel_list.getDagPath(0)
+        target_fn = oma.MFnMesh(target_dag)
+
+        target_faces = cmds.polyListComponentConversion(target_vtx, fv=True, tf=True)
+        target_faces = cmds.ls(target_faces, fl=True)
+
+        for face in target_faces:
+            face_id = int(face.split('[')[1].split(']')[0])
+            face_normal = target_fn.getPolygonNormal(face_id, oma.MSpace.kWorld)
+
+            if avg_normal * face_normal < 0:
+                final_normal = -avg_normal
+            else:
+                final_normal = avg_normal
+
+            target_fn.setFaceVertexNormal(final_normal, face_id, target_id, oma.MSpace.kWorld)
+
+        target_fn.updateSurface()
+
+    def find_matching_vertices(self, selection, threshold=0.0001):
+        """ 根据选中的顶点生成源到目标的顶点对，目标为第一个选中的模型顶点 """
+        if not selection:
+            return []
+
+        target_mesh = selection[0].split('.')[0]
+        target_vertices = [v for v in selection if v.split('.')[0] == target_mesh]
+        source_vertices = [v for v in selection if v.split('.')[0] != target_mesh]
+
+        if not target_vertices or not source_vertices:
+            return []
+
+        pairs = []
+
+        for tgt in target_vertices:
+            tgt_pos = cmds.pointPosition(tgt)
+            closest_src = None
+            min_dist = threshold
+
+            for src in source_vertices:
+                src_pos = cmds.pointPosition(src)
+                dist = sum((tgt_pos[i] - src_pos[i]) ** 2 for i in range(3)) ** 0.5
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_src = src
+
+            if closest_src:
+                pairs.append((closest_src, tgt))
+
+        return pairs
+
+    def match_vertex_normal(self):
+        """ 主执行函数：将法线从源顶点传递到第一个选中的模型顶点 """
+        selection = cmds.ls(sl=True, fl=True)
+
+        if len(selection) < 2:
+            cmds.warning("请选择至少两个不同物体的顶点")
+            return
+
+        vertex_pairs = self.find_matching_vertices(selection)
+
+        if not vertex_pairs:
+            cmds.warning("未找到重合顶点（间距需<0.0001单位）或目标模型无对应源顶点")
+            return
+
+        for src, tgt in vertex_pairs:
+            self.transfer_vertex_normals(src, tgt)
+
+        cmds.refresh(force=True)
 
     # --------------------- pivot
     def move_pivot_to_bottom_center(self, *args):
@@ -2654,3 +2766,4 @@ class LingJuGeometryTools:
 
 
 lingju_geometry_tools = LingJuGeometryTools()
+
