@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>零距数码 Maya 建模工具集 v175 · 交互使用说明</title>
+<style>
+/* ============================================================
+   零距数码 · 建模工具集 v175 交互说明
+   配色取自 Maya 视口 / 候选底面绿 / UV 棋盘格，离线自包含
+   ============================================================ */
+:root{
+  --bg:#0b0f15;      --bg2:#0f151e;
+  --surface:#141c26; --surface2:#1a2431; --surface3:#212d3c;
+  --line:#26333f;    --line2:#33445a;
+  --ink:#e8ebef;     --muted:#9aa7b6;   --dim:#7d8b9c;
+
+  /* 单一强调色 + 三个语义色；分区不再用颜色区分 */
+  --accent:#8ab4d8;
+  --ok:#93c47f; --warn:#d8a44a; --err:#d9705f;
+
+  /* Maya 原值：frame(0.14,0.16,0.18) fold(0.198,0.218,0.238)
+     grey(0.31,0.32,0.35) inner_grey(0.258,0.278,0.298) */
+  --mj-frame:#24292e; --mj-fold:#32383d; --mj-grey:#4f5259;
+  --mj-inner:#42474c; --mj-field:#1b1f24; --mj-edge:#191d22;
+  --mj-text:#e4e6e8;
+
+  --mono:"Cascadia Code","JetBrains Mono",Consolas,"Courier New",monospace;
+  --sans:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --head:58px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--sans); font-size:14px; line-height:1.7;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  html{scroll-behavior:auto}
+}
+
+/* ---------- 顶栏 ---------- */
+header{
+  position:fixed; top:0; left:0; right:0; height:var(--head); z-index:900;
+  display:flex; align-items:center; gap:18px; padding:0 20px;
+  background:rgba(11,15,21,.82); backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+  border-bottom:1px solid var(--line);
+  transition:box-shadow .3s,background .3s;
+}
+header.scrolled{box-shadow:0 10px 34px rgba(0,0,0,.55); background:rgba(11,15,21,.95)}
+.brand{display:flex;align-items:center;gap:11px;flex:0 0 auto;text-decoration:none;color:inherit}
+.brand svg{display:block}
+.brand-txt b{font-size:15px;letter-spacing:.06em;font-weight:700}
+.ver-chip{
+  font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:20px;
+  color:var(--muted);border:1px solid var(--line2);letter-spacing:.04em;
+}
+nav{display:flex;gap:4px;margin-left:6px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+.tab{
+  position:relative;flex:0 0 auto;border:0;background:transparent;cursor:pointer;
+  color:var(--muted);font-family:var(--sans);font-size:13.5px;font-weight:600;
+  padding:8px 14px;border-radius:8px;transition:color .2s,background .2s;letter-spacing:.02em;
+}
+.tab:hover{color:var(--ink);background:rgba(138,180,216,.08)}
+.tab.active{color:var(--ink);background:var(--surface2)}
+.tab.active::after{content:"";position:absolute;left:14px;right:14px;bottom:3px;height:2px;background:var(--accent)}
+.head-right{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.icon-btn{
+  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;
+  border:1px solid var(--line2);border-radius:8px;background:var(--surface2);
+  color:var(--muted);font-size:12px;font-family:var(--sans);cursor:pointer;
+  transition:.18s;white-space:nowrap;
+}
+.icon-btn:hover{color:var(--ink);border-color:var(--accent)}
+.icon-btn.on{color:var(--accent);border-color:var(--accent);background:var(--surface2)}
+.progress{position:fixed;top:var(--head);left:0;height:2px;z-index:901;width:0;background:var(--accent)}
+
+/* ---------- 页面骨架 ---------- */
+main{position:relative;z-index:1;padding-top:var(--head)}
+.page{display:none}
+.page.active{display:block;animation:pageIn .18s ease-out}
+@keyframes pageIn{from{opacity:0}to{opacity:1}}
+.wrap{max-width:1360px;margin:0 auto;padding:22px 22px 60px}
+
+/* ---------- 工具条 ---------- */
+.toolbar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:10px 12px;margin-bottom:16px;border:1px solid var(--line);border-radius:12px;
+  background:var(--surface);
+  position:sticky;top:calc(var(--head) + 8px);z-index:600;
+  box-shadow:0 12px 30px rgba(0,0,0,.35);
+}
+.search{position:relative;flex:1 1 220px;min-width:170px}
+.search input{
+  width:100%;height:34px;padding:0 32px 0 32px;border-radius:8px;
+  border:1px solid var(--line2);background:#0d141d;color:var(--ink);
+  font-family:var(--sans);font-size:13px;outline:none;transition:.18s;
+}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(138,180,216,.13)}
+.search input::placeholder{color:var(--dim)}
+.search .mag{position:absolute;left:10px;top:8px;color:var(--dim);pointer-events:none}
+.search .clr{position:absolute;right:6px;top:6px;width:22px;height:22px;border:0;border-radius:6px;
+  background:transparent;color:var(--dim);cursor:pointer;font-size:14px;line-height:1;display:none}
+.search .clr:hover{color:var(--err);background:rgba(217,112,95,.12)}
+.search.has .clr{display:block}
+.tbtn{
+  height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--line2);
+  background:var(--surface2);color:var(--muted);font-family:var(--sans);font-size:12.5px;
+  cursor:pointer;transition:.18s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.tbtn:hover{color:var(--ink);border-color:var(--accent);background:#22303f}
+.tbtn:active{transform:translateY(1px)}
+.tbtn.on{color:var(--accent);border-color:var(--accent)}
+.tbtn.warn:hover{border-color:var(--warn);color:var(--warn)}
+.count-pill{font-family:var(--mono);font-size:11px;color:var(--dim);padding:0 4px;white-space:nowrap}
+.count-pill b{color:var(--ink)}
+
+/* ---------- 主区双栏 ---------- */
+.studio{display:grid;grid-template-columns:380px minmax(0,1fr);gap:20px;align-items:start}
+.side{position:sticky;top:calc(var(--head) + 74px);display:flex;flex-direction:column;gap:14px}
+
+/* ---------- Maya 面板仿真 ---------- */
+.maya-panel{
+  width:368px;max-width:100%;border-radius:7px;overflow:hidden;
+  background:#1a1f25;border:1px solid #05080b;
+  box-shadow:0 26px 60px rgba(0,0,0,.6);
+}
+.mj-titlebar{
+  height:26px;display:flex;align-items:center;gap:7px;padding:0 8px;
+  background:linear-gradient(180deg,#454d57,#2c333b);border-bottom:1px solid #14181d;
+  font-size:11.5px;color:#dfe4ea;user-select:none;
+}
+.mj-titlebar .dock{width:11px;height:11px;border:1px solid #9fb0c2;border-radius:2px;opacity:.75;flex:0 0 auto}
+.mj-titlebar .t{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.02em}
+.mj-titlebar .g{display:flex;gap:6px;opacity:.6}
+.mj-titlebar .g i{width:9px;height:9px;border:1px solid #c8d4e0;display:block;border-radius:1px}
+
+/* 选项卡（v174）：建模 / 选择 / 命名 / UV / 烘焙 */
+.mj-tabs{
+  display:flex;gap:2px;padding:4px 5px 0;
+  background:#151a20;border-bottom:1px solid #0c1015;user-select:none;
+}
+.mj-tab{
+  flex:1 1 0;min-width:0;height:26px;padding:0 2px;border:0;border-radius:4px 4px 0 0;
+  background:transparent;color:#a9b6c4;font-family:var(--sans);font-size:12px;font-weight:600;
+  cursor:pointer;transition:background .16s,color .16s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.mj-tab[data-tip]{cursor:pointer}
+.mj-tab:hover{background:#1b3e2f;color:#fff}
+.mj-tab.active{background:#2e674f;color:#fff;font-weight:700}
+.mj-tab:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.mj-scroll{
+  min-height:420px;max-height:min(66vh,660px);overflow-y:auto;overflow-x:auto;padding:8px;
+  background:#1a1f25;scrollbar-width:thin;scrollbar-color:#3d4c5c #141a21;
+}
+.mj-scroll::-webkit-scrollbar{width:9px;height:9px}
+.mj-scroll::-webkit-scrollbar-track{background:#141a21;border-left:1px solid #0c1015}
+.mj-scroll::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#3f5468,#2c3b4a);border-radius:6px;border:1px solid #16202b}
+.mj-scroll::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+.mj-scroll::-webkit-scrollbar-corner{background:#141a21}
+.mj-col{width:340px;display:flex;flex-direction:column;gap:6px}
+.mj-tabpage{display:none}
+.mj-tabpage.active{display:flex;flex-direction:column;gap:6px}
+
+.mj-frame{background:var(--mj-frame);border-radius:3px;border:1px solid #1b2026;overflow:hidden}
+.mj-frame-h{
+  display:flex;align-items:center;gap:6px;height:23px;padding:0 8px;cursor:pointer;user-select:none;
+  background:linear-gradient(180deg,#2e353c,#252b31);border-bottom:1px solid #1a1f24;
+  font-size:12.5px;font-weight:700;color:#e8ecef;letter-spacing:.04em;transition:.16s;
+}
+.mj-frame-h:hover{background:linear-gradient(180deg,#39424b,#2b323a);color:#fff}
+.mj-frame-h .car{transition:transform .22s;color:var(--accent);font-size:9px;width:9px}
+.mj-frame.open>.mj-frame-h .car{transform:rotate(90deg)}
+.mj-frame.open>.mj-frame-h{border-bottom-color:#1a1f24}
+.mj-frame:not(.open)>.mj-frame-h{border-bottom-color:transparent}
+.mj-frame-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s cubic-bezier(.3,.8,.3,1)}
+.mj-frame.open>.mj-frame-b{grid-template-rows:1fr}
+.mj-frame-b>.inner{overflow:hidden;min-height:0}
+.mj-frame-b .pad{padding:6px 8px 8px;display:flex;flex-direction:column;gap:2px}
+
+.mj-fold{width:299px;background:var(--mj-fold);border-radius:3px;border:1px solid #22272c;overflow:hidden}
+.mj-fold.sub{width:277px;background:var(--mj-grey);border-color:#3a3d43;margin:2px 0}
+.mj-fold.tiny{width:277px;background:var(--mj-inner);border-color:#33383e}
+.mj-fold-h{
+  display:flex;align-items:center;gap:6px;height:21px;padding:0 8px;cursor:pointer;user-select:none;
+  font-size:12px;font-weight:600;color:#e9edf1;background:rgba(255,255,255,.045);transition:.16s;letter-spacing:.03em;
+}
+.mj-fold-h:hover{background:rgba(138,180,216,.16);color:#fff}
+.mj-fold-h .car{font-size:8px;width:8px;color:#a7b1bd;transition:transform .22s}
+.mj-fold.open>.mj-fold-h .car{transform:rotate(90deg)}
+.mj-fold-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s cubic-bezier(.3,.8,.3,1)}
+.mj-fold.open>.mj-fold-b{grid-template-rows:1fr}
+.mj-fold-b>.inner{overflow:hidden;min-height:0}
+.mj-fold-b .pad{padding:5px 10px 8px;display:flex;flex-direction:column;gap:3px}
+.mj-fold.sub .mj-fold-b .pad{padding:4px 8px 7px}
+.mj-fold.tiny .mj-fold-b .pad{padding:4px}
+
+.mj-row{display:flex;gap:3px;align-items:center}
+.mj-row.c2{gap:3px}
+.mj-spacer{height:5px;flex:0 0 auto}
+.mj-txt{font-size:11.5px;color:#d6dbe1;line-height:1.5}
+.mj-txt.dim{color:#9aa5b1}
+.mj-txt.center{text-align:center;width:100%}
+
+.mj-btn{
+  height:28px;border:1px solid #2b3037;border-radius:2px;background:var(--mj-inner);
+  color:var(--mj-text);font-family:var(--sans);font-size:12px;cursor:pointer;
+  padding:0 4px;transition:background .14s,box-shadow .14s,transform .06s;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;flex:0 0 auto;max-width:100%;
+}
+.mj-btn:hover{background:#5a6169;box-shadow:inset 0 0 0 1px rgba(138,180,216,.55);color:#fff}
+.mj-btn:active{transform:translateY(1px);background:#383e45}
+.mj-btn.grey{background:var(--mj-grey);border-color:#3b3e44}
+.mj-btn.grey:hover{background:#666a72}
+.mj-btn.fire{animation:fire .3s ease-out}
+@keyframes fire{0%{box-shadow:0 0 0 0 rgba(138,180,216,.6)}100%{box-shadow:0 0 0 8px rgba(138,180,216,0)}}
+.mj-btn .dot{position:absolute;left:5px;top:50%;margin-top:-2.5px;width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:0;transition:.2s}
+.mj-btn:hover .dot{opacity:1}
+
+.mj-fields{display:grid;grid-template-columns:92px 158px;gap:3px 4px;align-items:center}
+.mj-fields.uv{grid-template-columns:96px 80px}
+.mj-fields label{font-size:11.5px;color:#d3d9df;text-align:right;padding-right:2px;line-height:1.35}
+.mj-num{
+  height:20px;width:100%;background:var(--mj-field);border:1px solid var(--mj-edge);border-radius:2px;
+  color:#e7edf3;font-family:var(--mono);font-size:11.5px;padding:0 6px;outline:none;transition:.15s;
+}
+.mj-num:hover{border-color:#4d6478}
+.mj-num:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(138,180,216,.22);background:#12181f}
+.mj-num.wheeling{border-color:var(--accent);box-shadow:0 0 0 2px rgba(138,180,216,.22)}
+.mj-num:disabled{opacity:.4;cursor:not-allowed}
+.mj-select{
+  height:21px;width:100%;background:#3b4147;border:1px solid #2b3037;border-radius:2px;color:#e7edf3;
+  font-family:var(--sans);font-size:11.5px;padding:0 20px 0 6px;outline:none;cursor:pointer;
+  appearance:none;-webkit-appearance:none;transition:.15s;
+  background-image:linear-gradient(45deg,transparent 50%,#b9c6d2 50%),linear-gradient(135deg,#b9c6d2 50%,transparent 50%);
+  background-position:calc(100% - 12px) 9px,calc(100% - 8px) 9px;background-size:4px 4px,4px 4px;background-repeat:no-repeat;
+}
+.mj-select:hover{background-color:#4c545c;border-color:#5f7386}
+.mj-select:focus{border-color:var(--accent)}
+.mj-select.wide{width:100%;flex:1 1 auto;min-width:0}
+.mj-menurow{display:flex;align-items:center;gap:6px;width:277px;max-width:100%}
+.mj-menurow>span{font-size:11.5px;color:#d3d9df;flex:0 0 auto}
+
+.mj-check{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-size:11.5px;color:#d6dbe1;padding:1px 0}
+.mj-check input{position:absolute;opacity:0;width:0;height:0}
+.mj-check .box{
+  width:13px;height:13px;flex:0 0 auto;border:1px solid var(--mj-edge);border-radius:2px;background:var(--mj-field);
+  display:grid;place-items:center;transition:.15s;
+}
+.mj-check .box::after{content:"";width:7px;height:4px;border-left:2px solid #0b0f15;border-bottom:2px solid #0b0f15;
+  transform:rotate(-45deg) scale(0);transition:transform .15s;margin-top:-2px}
+.mj-check input:checked+.box{background:var(--accent);border-color:var(--accent)}
+.mj-check input:checked+.box::after{transform:rotate(-45deg) scale(1)}
+.mj-check:hover .box{border-color:#5f7386}
+.mj-check input:focus-visible+.box{box-shadow:0 0 0 3px rgba(138,180,216,.3)}
+.mj-check.dis{opacity:.42;cursor:not-allowed}
+
+.mj-radio{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#d3d9df}
+.mj-radio .rl{flex:0 0 auto}
+.mj-radio label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}
+.mj-radio input{position:absolute;opacity:0;width:0;height:0}
+.mj-radio .rd{width:12px;height:12px;border-radius:50%;border:1px solid var(--mj-edge);background:var(--mj-field);display:grid;place-items:center;transition:.15s}
+.mj-radio .rd::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);transform:scale(0);transition:.15s}
+.mj-radio input:checked+.rd{border-color:var(--accent)}
+.mj-radio input:checked+.rd::after{transform:scale(1)}
+.mj-radio label:hover .rd{border-color:#5f7386}
+
+.mj-slider{display:flex;align-items:center;gap:4px}
+.mj-range{
+  -webkit-appearance:none;appearance:none;height:16px;background:transparent;cursor:pointer;outline:none;flex:1 1 auto;min-width:0;
+}
+.mj-range::-webkit-slider-runnable-track{height:14px;background:var(--mj-field);border:1px solid var(--mj-edge);border-radius:2px}
+.mj-range::-webkit-slider-thumb{-webkit-appearance:none;width:9px;height:18px;margin-top:-3px;border-radius:2px;
+  background:linear-gradient(180deg,#a8b4c0,#6d7885);border:1px solid #20262c;transition:.15s}
+.mj-range:hover::-webkit-slider-thumb{background:var(--accent)}
+.mj-range::-moz-range-track{height:14px;background:var(--mj-field);border:1px solid var(--mj-edge);border-radius:2px}
+.mj-range::-moz-range-thumb{width:9px;height:18px;border-radius:2px;background:#a8b4c0;border:1px solid #20262c}
+.mj-range:hover::-moz-range-thumb{background:var(--accent)}
+.mj-range.grp{height:18px}
+.mj-range.grp::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--mj-field)}
+.mj-range.grp::-webkit-slider-thumb{margin-top:-7px;height:18px}
+
+/* 坐标轴边界对齐方向盘 */
+.mj-pad{position:relative;width:100%;height:158px;margin:2px 0}
+.mj-pad .ar{position:absolute;width:56px;height:36px;border:1px solid #2b3037;border-radius:2px;
+  background:var(--mj-fold);color:#e4e6e8;font-size:16px;cursor:pointer;display:grid;place-items:center;transition:.15s}
+.mj-pad .ar:hover{background:#4a545e;box-shadow:inset 0 0 0 1px var(--accent)}
+.mj-pad .up{top:4px;left:50%;transform:translateX(-50%)}
+.mj-pad .down{bottom:4px;left:50%;transform:translateX(-50%)}
+.mj-pad .left{top:50%;left:4px;transform:translateY(-50%)}
+.mj-pad .right{top:50%;right:4px;transform:translateY(-50%)}
+.mj-pad .pl{position:absolute;left:50%;transform:translateX(-50%);width:46px;height:26px;border-radius:2px;
+  border:1px solid #2b3037;color:#e4e6e8;font-family:var(--mono);font-size:11.5px;cursor:pointer;transition:.15s}
+.mj-pad .pl:hover{box-shadow:0 0 0 1px rgba(255,255,255,.35)}
+.mj-pad .p1{top:46px}.mj-pad .p2{top:76px}.mj-pad .p3{top:106px}
+
+/* 搜索高亮 / 淡出 */
+.mj-hit{outline:1px solid var(--warn);outline-offset:1px;border-radius:2px}
+.mj-miss{opacity:.22;filter:saturate(.3)}
+[data-tip]{cursor:help}
+.mj-btn[data-tip],.mj-check[data-tip],.mj-radio[data-tip],.mj-fold-h[data-tip],.mj-frame-h[data-tip]{cursor:pointer}
+.pinned{outline:1px solid var(--accent)!important;outline-offset:1px}
+
+/* ---------- 右侧说明卡 ---------- */
+.card{
+  border:1px solid var(--line);border-radius:14px;background:var(--surface);
+  box-shadow:0 18px 44px rgba(0,0,0,.4);overflow:hidden;
+}
+.card-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.card-h h3{margin:0;font-size:14px;letter-spacing:.04em;font-weight:700}
+.card-h .sp{flex:1}
+.mini{border:1px solid var(--line2);background:transparent;color:var(--dim);border-radius:6px;height:23px;padding:0 8px;
+  font-size:11px;cursor:pointer;font-family:var(--sans);transition:.15s}
+.mini:hover{color:var(--accent);border-color:var(--accent)}
+.chip{
+  font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:20px;
+  border:1px solid var(--line2);color:var(--muted);background:var(--surface2);
+  white-space:nowrap;cursor:pointer;transition:color .15s,border-color .15s;
+}
+.chip:hover{color:var(--ink);border-color:var(--accent)}
+.card-b{padding:16px}
+.ins-title{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.ins-title h2{margin:0;font-size:21px;line-height:1.35;font-weight:800;letter-spacing:.01em}
+.ins-path{font-family:var(--mono);font-size:11px;color:var(--dim);margin-bottom:14px;word-break:break-all}
+.ins-path b{color:var(--muted);font-weight:400}
+.ins-desc{margin:0 0 14px;color:#c6d0dc;font-size:13.5px}
+.ins-desc strong{color:var(--ink);font-weight:700}
+.ins-sec{margin-top:14px}
+.ins-sec>h4{
+  margin:0 0 8px;font-size:11px;letter-spacing:.18em;color:var(--dim);font-family:var(--mono);
+  text-transform:uppercase;display:flex;align-items:center;gap:8px;
+}
+.ins-sec>h4::after{content:"";flex:1;height:1px;background:var(--line)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12.5px}
+.kv dt{color:var(--muted);font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+.kv dd{margin:0;color:#d5dde6}
+.kv dd code{font-family:var(--mono);font-size:11.5px;color:var(--ink);background:var(--surface2);padding:1px 5px;border-radius:4px}
+ol.steps{margin:0;padding-left:0;list-style:none;counter-reset:s}
+ol.steps li{
+  counter-increment:s;position:relative;padding:0 0 8px 28px;font-size:13px;color:#c6d0dc;
+}
+ol.steps li::before{
+  content:counter(s);position:absolute;left:0;top:1px;width:19px;height:19px;border-radius:50%;
+  display:grid;place-items:center;font-family:var(--mono);font-size:10.5px;font-weight:700;
+  color:var(--accent);background:var(--surface2);border:1px solid var(--line2);
+}
+.note{
+  border-left:2px solid var(--warn);background:var(--surface2);padding:9px 12px;border-radius:0 8px 8px 0;
+  font-size:12.5px;color:var(--muted);margin-top:12px;
+}
+.note.danger{border-color:var(--err)}
+.note.ok{border-color:var(--ok)}
+.note b{color:var(--ink)}
+.empty-ins{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.empty-hint{margin:0;color:var(--dim);font-size:13px}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+
+/* ---------- 悬停提示 ---------- */
+#tip{
+  position:fixed;z-index:2000;max-width:330px;min-width:180px;pointer-events:none;
+  background:rgba(9,13,19,.97);border:1px solid var(--line2);border-radius:10px;
+  box-shadow:0 20px 50px rgba(0,0,0,.7);
+  padding:10px 13px 12px;opacity:0;transform:translateY(4px);transition:opacity .14s,transform .14s;
+  overflow:hidden;
+}
+#tip.show{opacity:1;transform:none}
+#tip .th{margin-bottom:5px}
+#tip .th b{font-size:13.5px;color:var(--ink);letter-spacing:.02em}
+#tip .td{font-size:12.3px;color:#b6c3d2;line-height:1.65}
+#tip .td strong{color:var(--ink);font-weight:700}
+#tip .tf{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px}
+#tip .tf span{font-family:var(--mono);font-size:10px;color:var(--muted);border:1px solid var(--line);
+  background:var(--surface);padding:1px 6px;border-radius:4px}
+
+/* ---------- 通用内容块 ---------- */
+.sec{margin-top:30px}
+.sec:first-child{margin-top:0}
+.sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.sec-h h2{margin:0;font-size:20px;font-weight:700;letter-spacing:.01em}
+.sec-h .ln{flex:1;height:1px;background:var(--line)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.panel-card{
+  border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--surface);
+  transition:border-color .2s;
+}
+.panel-card:hover{border-color:var(--line2)}
+.panel-card h3{margin:0 0 8px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:9px}
+.panel-card p{margin:0 0 10px;color:var(--muted);font-size:13.3px}
+.panel-card p:last-child{margin-bottom:0}
+.panel-card ul{margin:0;padding-left:18px;color:var(--muted);font-size:13px}
+.panel-card li{margin-bottom:5px}
+.panel-card li b{color:var(--ink);font-weight:600}
+.panel-card b{color:var(--ink);font-weight:600}
+.panel-card code{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.drop-side p b{color:var(--ink);font-weight:600}
+.reveal{opacity:0}
+.reveal.in{opacity:1;transition:opacity .2s ease-out}
+
+/* 拖拽安装演示 */
+.drop-stage{
+  display:grid;grid-template-columns:1fr 250px;gap:18px;align-items:center;
+  border:1px solid var(--line);border-radius:14px;padding:20px;background:var(--surface);
+}
+.file-chip{
+  display:inline-flex;align-items:center;gap:10px;padding:11px 15px;border-radius:10px;cursor:grab;
+  background:var(--surface2);border:1px solid var(--line2);
+  box-shadow:0 12px 26px rgba(0,0,0,.5);user-select:none;touch-action:none;transition:box-shadow .2s,border-color .2s;
+  position:relative;z-index:5;
+}
+.file-chip:active{cursor:grabbing}
+.file-chip.drag{border-color:var(--accent);box-shadow:0 20px 44px rgba(0,0,0,.6)}
+.file-chip .ic{width:30px;height:36px;border-radius:4px;background:var(--surface3);border:1px solid var(--line2);
+  display:grid;place-items:center;font-family:var(--mono);font-size:9px;color:var(--accent);font-weight:700;flex:0 0 auto}
+.file-chip .ft b{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+.maya-drop{
+  position:relative;height:186px;border-radius:10px;border:1px dashed var(--line2);overflow:hidden;
+  background:linear-gradient(180deg,#20262d,#151a20);transition:.22s;
+}
+.maya-drop.hot{border-color:var(--accent);border-style:solid}
+.maya-drop .bar{height:22px;background:linear-gradient(180deg,#3b434c,#2a3038);display:flex;align-items:center;
+  gap:6px;padding:0 8px;font-size:10.5px;color:#c3ccd6;border-bottom:1px solid #12161b}
+.maya-drop .bar i{width:8px;height:8px;border-radius:50%;background:#4a5560;display:block}
+.maya-drop .vp{position:absolute;inset:22px 0 0;
+  background:radial-gradient(ellipse at 50% 60%,#2b333b,#171c22 70%);display:grid;place-items:center}
+.maya-drop .grid{position:absolute;inset:0;opacity:.5;
+  background-image:linear-gradient(rgba(120,150,180,.13) 1px,transparent 1px),linear-gradient(90deg,rgba(120,150,180,.13) 1px,transparent 1px);
+  background-size:22px 22px;transform:perspective(220px) rotateX(58deg) translateY(28px) scale(1.6);transform-origin:50% 100%}
+.maya-drop .hint{position:relative;font-size:12px;color:var(--muted);text-align:center;padding:0 14px;line-height:1.6}
+.maya-drop .hint b{color:var(--ink);display:block;font-size:13px;margin-bottom:2px}
+.drop-side{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.drop-side p{margin:0;font-size:12.8px;color:var(--muted)}
+.drop-result{
+  margin-top:12px;border:1px solid var(--line2);border-radius:10px;background:#0d141d;padding:12px 14px;display:none;
+}
+.drop-result.show{display:block;animation:pageIn .18s}
+.drop-result .dh{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--ok);margin-bottom:8px}
+.drop-result ul{margin:0;padding-left:18px;font-family:var(--mono);font-size:11.5px;color:#b7c6d5;line-height:1.9}
+.drop-result ul b{color:var(--ink);font-weight:400}
+
+/* 时间线 */
+.timeline{position:relative;padding-left:26px}
+.timeline::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:1px;background:var(--line2)}
+.tl-item{position:relative;margin-bottom:18px}
+.tl-item::before{content:"";position:absolute;left:-23px;top:7px;width:9px;height:9px;border-radius:50%;
+  background:var(--bg);border:2px solid var(--accent)}
+.tl-item .tv{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.tl-item .tv b{font-family:var(--mono);font-size:15px;color:var(--ink)}
+
+/* 页脚 */
+footer{position:relative;z-index:1;border-top:1px solid var(--line);padding:20px;text-align:center;
+  color:var(--dim);font-size:12px}
+footer b{color:var(--muted);font-weight:600}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:2100;opacity:0;
+  padding:10px 18px;border-radius:10px;background:rgba(9,13,19,.96);border:1px solid var(--line2);
+  color:var(--ink);font-size:13px;box-shadow:0 16px 40px rgba(0,0,0,.6);transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.ok{border-color:var(--ok)} #toast.warn{border-color:var(--warn)}
+
+/* ---------- 响应式 ---------- */
+@media (max-width:900px){
+  .studio{grid-template-columns:1fr}
+  .side{position:static;max-width:760px;margin:0 auto}
+  .maya-panel{margin:0 auto}
+  .toolbar{position:static}
+}
+@media (max-width:760px){
+  :root{--head:54px}
+  header{padding:0 12px;gap:10px}
+  .brand-txt b{font-size:13.5px}
+  .head-right .lbl{display:none}
+  .icon-btn{padding:0 9px}
+  .wrap{padding:16px 12px 48px}
+  .drop-stage{grid-template-columns:1fr}
+  .maya-drop{height:160px}
+  .card-b{padding:13px}
+  .ins-title h2{font-size:18px}
+  #tip{max-width:min(330px,calc(100vw - 20px))}
+  .mj-scroll{min-height:300px;max-height:none}
+}
+@media (max-width:560px){
+  .brand-txt{display:none}
+  header{gap:8px}
+  nav{margin-left:0}
+  .tab{padding:8px 11px;font-size:13px}
+}
+@media (max-width:400px){
+  .mj-col{width:308px}
+  .mj-fold{width:288px}
+  .mj-fold.sub{width:268px}
+  .mj-fields{grid-template-columns:86px 1fr}
+}
+</style>
+</head>
+<body>
+
+<header id="head">
+  <a class="brand" href="#top">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M16 2.6 28.4 9.3v13.4L16 29.4 3.6 22.7V9.3z" stroke="#8ab4d8" stroke-width="1.5"/>
+      <path d="M16 2.6v26.8M3.6 9.3 16 16l12.4-6.7" stroke="#8ab4d8" stroke-width="1.1" opacity=".55"/>
+    </svg>
+    <span class="brand-txt"><b>零距数码 · 建模工具集</b></span>
+  </a>
+  <span class="ver-chip">v175</span>
+  <nav id="nav" role="tablist">
+    <button class="tab" data-page="install" role="tab">安装说明</button>
+    <button class="tab active" data-page="studio" role="tab">界面模拟</button>
+    <button class="tab" data-page="change" role="tab">更新日志</button>
+  </nav>
+  <div class="head-right">
+    <button class="icon-btn on" id="tipMode" title="切换说明显示方式：跟随鼠标 / 固定侧栏">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 2h12v9H8.6L5 14v-3H2z"/></svg>
+      <span class="lbl">跟随提示</span>
+    </button>
+  </div>
+</header>
+<div class="progress" id="prog"></div>
+
+<main id="top">
+
+<!-- ==================== 界面模拟 ==================== -->
+<section class="page active" id="page-studio">
+  <div class="wrap">
+    <div class="toolbar">
+      <div class="search" id="searchBox">
+        <svg class="mag" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.6"/><path d="m10.6 10.6 3.2 3.2"/></svg>
+        <input id="search" type="text" placeholder="搜索功能：扭曲 / 重采样 / 传递UV / 坐标轴…" autocomplete="off" spellcheck="false">
+        <button class="clr" id="searchClr" title="清除搜索">×</button>
+      </div>
+      <span class="count-pill" id="searchCount"></span>
+      <button class="tbtn" id="expandAll">全部展开</button>
+      <button class="tbtn" id="collapseAll">全部收起</button>
+      <button class="tbtn warn" id="resetVals">重置数值</button>
+      <button class="tbtn" id="wheelDemo" title="演示数值框的悬停滚轮步进">滚轮演示</button>
+    </div>
+
+    <div class="studio">
+      <div>
+        <div class="maya-panel">
+          <div class="mj-titlebar">
+            <span class="dock"></span>
+            <span class="t">成都零距数码工具集v175</span>
+            <span class="g"><i></i><i></i><i></i></span>
+          </div>
+          <div class="mj-tabs" id="mjTabs" role="tablist" aria-label="工具集分区"></div>
+          <div class="mj-scroll" id="mjScroll"><div class="mj-col" id="mjRoot"></div></div>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="card" id="insCard">
+          <div class="card-h">
+            <h3>功能说明</h3><span class="sp"></span>
+            <button class="mini" id="unpin" style="display:none">取消固定</button>
+          </div>
+          <div class="card-b" id="insBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 安装说明 ==================== -->
+<section class="page" id="page-install">
+  <div class="wrap">
+
+    <div class="sec reveal">
+      <div class="sec-h"><h2>拖拽安装（推荐）</h2><span class="ln"></span></div>
+      <div class="drop-stage">
+        <div class="maya-drop" id="dropTarget">
+          <div class="bar"><i></i><i></i><i></i><span>Autodesk Maya 2025 — 未命名场景</span></div>
+          <div class="vp"><div class="grid"></div>
+            <div class="hint" id="dropHint"><b>拖到这里</b></div>
+          </div>
+        </div>
+        <div class="drop-side">
+          <div class="file-chip" id="fileChip" tabindex="0" role="button" aria-label="拖拽 install.mel 到 Maya 窗口，或按回车模拟安装">
+            <span class="ic">MEL</span>
+            <span class="ft"><b>install.mel</b></span>
+          </div>
+          <p>真实操作：在资源管理器里选中 <b>install.mel</b>，按住左键拖到 Maya 主窗口（视口或工具栏均可）后松开。</p>
+          <button class="tbtn" id="dropReplay">重播演示</button>
+        </div>
+      </div>
+      <div class="drop-result" id="dropResult">
+        <div class="dh"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 8.5 3.2 3.2L13 5"/></svg>安装完成（模拟）</div>
+        <ul>
+          <li>Maya 版本：<b>2025</b></li>
+          <li>numpy：<b>已解压 numpy-1.26.4-cp311-cp311-win_amd64.whl</b></li>
+          <li>已复制到：<b>Documents/maya/2025/scripts</b></li>
+          <li>工具栏：<b>LINGJU</b> 标签页 → 按钮「零距建模」</li>
+          <li>点新图标即可打开工具，无需重启 Maya。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec reveal">
+      <div class="sec-h"><h2>装完之后</h2><span class="ln"></span></div>
+      <div class="grid3">
+        <div class="panel-card"><h3>打开面板</h3><p>点工具栏 <b>LINGJU</b> 标签页里的「零距建模」图标。面板是可停靠的 workspaceControl，可以拖到 Maya 左右两侧或浮动。</p></div>
+        <div class="panel-card"><h3>升级 / 换版本</h3><p>拿到新安装包后<b>再拖一次 install.mel</b> 即可：安装器会清掉旧按钮再建新的，pyd 直接覆盖。不同 Maya 版本互不影响。</p></div>
+        <div class="panel-card"><h3>卸载</h3><p>删掉 scripts 里的 <b>Lingju_Modeling_Tools_v175_*.pyd</b> 与图标，再在 Shelf Editor 里删掉 LINGJU 标签页上的按钮即可，不会留下注册表或偏好设置残留。</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 更新日志 ==================== -->
+<section class="page" id="page-change">
+  <div class="wrap">
+    <div class="sec">
+      <div class="timeline">
+        <div class="tl-item reveal">
+          <div class="tv"><b>v1.75</b></div>
+          <div class="panel-card">
+            <ul>
+              <li><b>智能分离</b>选中面时改用 Maya 原生的 <b>Extract Face</b>（Edit Mesh 菜单命令，内部为 performPolyChipOff + 分离），不再走自写的复制 / 反选 / 删除算法。</li>
+              <li><b>复制面</b>为「是」时等于 Maya 的 <b>Duplicate Face</b>（保留原面），为「否」时等于 <b>Extract Face</b>（抽走原面）。</li>
+              <li>分离后自动只选中抽出的新片，居中轴心，并清理原物体与新片的构造历史。</li>
+              <li>删除旧的复制 / 反选 / 删除中间步骤及相关无用代码；选物体的按壳分离流程保持不变。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tl-item reveal">
+          <div class="tv"><b>v1.74</b></div>
+          <div class="panel-card">
+            <ul>
+              <li>面板改为<b>选项卡布局</b>：建模 / 选择 / 命名 / UV / 烘焙五个分区，同一时间只显示一个，命令再多也不用一路往下滚。</li>
+              <li>选项卡支持<b>拖动排序</b>、<b>双击弹出独立窗口</b>；右键标签可弹出当前分区、合并全部已弹出的窗口。</li>
+              <li>关闭独立窗口会自动合并回主面板原来的位置，不用重新打开工具。</li>
+              <li><b>打直UV</b> 按钮加宽到 <b>330</b>，与选项卡内容区对齐。</li>
+              <li>数值框悬停滚轮（扭曲阈值 / 按角度选面 / UV检查 / 棋盘格）与 v1.73 一致。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tl-item reveal">
+          <div class="tv"><b>v1.73</b></div>
+          <div class="panel-card">
+            <ul>
+              <li><b>扭曲阈值</b>数值框支持悬停滚轮，步长 <b>1</b>，范围 0–180，与滑条双向同步并写回 optionVar。</li>
+              <li><b>按角度选面</b>的角度数值框支持滚轮，步长 <b>1</b>，范围 0–180，改完立即刷新选择预览。</li>
+              <li><b>UV 检查</b>：贴图大小步长 <b>256</b>（0–8192）、棋盘格1大小步长 <b>256</b>（0–1024）、棋盘格2大小步长 <b>8</b>（最小 4）。</li>
+              <li>滚轮绑定改为全局共享：<b>扭曲面检查 / 按角度选面 / UV检查 / 边重建</b> 共用一套注册表，折叠栏展开时自动补挂。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tl-item reveal">
+          <div class="tv"><b>v1.72</b></div>
+          <div class="panel-card">
+            <ul>
+              <li>UV检查 / 传递UV 折叠栏宽度与内边距对齐<b>智能合并分离</b>（299 / marginWidth 10）。</li>
+              <li>按钮宽度与间距对齐<b>快速底面</b>：成对 136、整行 275、高 28。</li>
+              <li><b>打直UV</b> 与折叠栏同宽（299），并留出 5px 间隔。</li>
+              <li>边重建数值框去掉 ▲▼ 步进按钮，只保留悬停滚轮。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tl-item reveal">
+          <div class="tv"><b>v1.71</b></div>
+          <div class="panel-card">
+            <ul>
+              <li>边重建各数值框支持<b>悬停滚轮</b>调节，步长与字段 step 一致，手感同 QSpinBox。</li>
+              <li>Qt 侧不可用时自动退回 Ctrl+拖拽，不影响界面构建。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tl-item reveal">
+          <div class="tv"><b>v1.70</b></div>
+          <div class="panel-card">
+            <ul>
+              <li>新增<b>边重建</b>折叠栏（位于智能合并分离之上），内嵌 ResampleMesh_Maya 的<b>重采样 / 平滑 / 圆化 / 解结 / 桥接</b>五个子折叠栏。</li>
+              <li><b>实时预览</b>放在最外层：勾选后缓存原始点位，改参数时先还原再重算；重采样预览固定只调点位、不改点数与拓扑。</li>
+              <li>保留<b>双链分别设点数</b>：正好选中两条开放边链时可分别指定目标点数。</li>
+              <li>窗口、状态提示、工具架按钮、快捷键安装未搬运；结果与错误统一走视口提示。</li>
+              <li>删除「平均线段」功能。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <b>成都零距数码</b> · 建模工具集 v1.75 · 作者 Reggie Tu
+</footer>
+
+<div id="tip" role="tooltip" aria-hidden="true"></div>
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   数据：按 Lingju_Modeling_Tools_v175.py 的 UI 构建函数还原
+   ========================================================= */
+function T(t,d,o){ return Object.assign({t:t,d:d},o||{}); }
+
+const PANEL = [
+{k:'frame', label:'建模', open:false,
+ i:T('建模','工具集的主分区：坐标轴、Ring 分割、扭曲面检查、快速底面、边重建、智能合并分离六个折叠栏，加上十个体感建模按钮。所有折叠栏默认收起',{}),
+ items:[
+
+ {k:'fold', label:'坐标轴', i:T('坐标轴','枢轴（pivot）与变换的常用操作，外加一个嵌入式的「物体边界对齐」方向盘。按钮高 20px，比建模按钮矮一截，是源码里的原始规格。'),items:[
+   {k:'row', items:[
+     {k:'btn',label:'冻结',w:90,h:20,i:T('冻结','冻结选中物体的变换：把当前位移/旋转/缩放烘进顶点，通道归 0、缩放归 1。<strong>物体在视口里不会移动</strong>，只是把变换「清零并记住」。没有选择时视口提示「冻结失败：请先选择物体」。',{p:[['作用对象','选中的 transform'],['可撤销','是（单次 undo）']]} )},
+     {k:'btn',label:'居中',w:90,h:20,i:T('居中','把坐标轴移动到物体包围盒中心，<strong>物体本身不动</strong>。等同于 Maya 的 Modify → Center Pivot。',{} )},
+     {k:'btn',label:'重置',w:90,h:20,i:T('重置','把变换通道重置为初始值，<strong>物体会被搬回世界中心</strong>。和「冻结」不同：冻结只清通道不动物体，重置会真的移动物体。没有选择时提示「重置失败：请先选择物体」。',{note:'确认物体不需要留在原位再点，必要时随后 Ctrl+Z。'} )}
+   ]},
+   {k:'row', items:[
+     {k:'btn',label:'置底',w:136,h:20,i:T('置底','把坐标轴移到物体<strong>底部中心</strong>（包围盒最小 Y 处），物体不动。摆场景时先置底，再用移动工具贴地面就很方便。',{} )},
+     {k:'btn',label:'物体至世界中心',w:136,h:20,i:T('物体至世界中心','以<strong>物体底面</strong>为基准把物体搬到世界中心：底面贴 Y=0、水平中心对世界原点。资产入库前统一摆放常用。',{} )}
+   ]},
+   {k:'row', items:[
+     {k:'btn',label:'匹配坐标轴',w:275,h:20,i:T('匹配坐标轴','把<strong>后选物体</strong>的坐标轴原点搬到<strong>第一个选中物体</strong>的 pivot 位置，物体本身不移动。',{s:['先选「提供参考位置」的物体','再选「要改坐标轴」的物体（可多选）','点本按钮，后选物体的 pivot 落到第一个物体的 pivot 上'],note:'选择顺序敏感：Maya 里最后选中的才是操作对象，这里反过来用第一个当参考。'} )}
+   ]},
+   {k:'spacer',h:4},
+   {k:'fold', label:'物体边界对齐', tiny:true, i:T('物体边界对齐','嵌入主窗口的方向盘：先选一个操作平面（XY / ZY / ZX），再点上下左右，把当前物体的 pivot 推到包围盒在该平面上的对应边缘。<strong>只动坐标轴，不动几何体</strong>。',{p:[['平面按钮','XY 蓝 / ZY 红 / ZX 绿，高亮的是当前平面'],['方向','← → 推左右边界，↑ ↓ 推上下边界'],['默认平面','XY']]}),items:[
+     {k:'pad'}
+   ]}
+ ]},
+
+ {k:'fold', label:'Ring批量分割', i:T('Ring批量分割','对选中的边批量做中点分割。两种模式：只处理选中的那一条边（找它所在四边面的对边），或者按整条 Ring 一次分割（等同 Maya 自带 To Edge Ring Split）。落在同一 Ring 上的多条边会自动去重，只分割一次。'),items:[
+   {k:'menu', label:'模式：', wide:true, id:'ringMode',
+    opts:['仅处理选中单条边(单四边面对边)','整条Ring分割(等同maya自带工具)'], val:0,
+    i:T('分割模式','<strong>仅处理选中单条边</strong>：只对选中的边找单个四边面的对边做中点连线，适合局部补线。<br><strong>整条 Ring 分割</strong>：对齐 edgeRingUtilities 的 To Edge Ring Split，一次切开整条环边。',{p:[['默认','仅处理选中单条边'],['去重','同一 Ring 只分割一次']]})},
+   {k:'check', label:'Insert With EdgeFlow 开启边流', id:'ringFlow', val:false,
+    i:T('Insert With EdgeFlow','分割时启用 Maya 的 Edge Flow，让新点顺着原有曲面曲率滑动，而不是死板地落在两点中点。曲面上补线时勾选，硬表面平面补线可不勾。',{})},
+   {k:'btn', label:'执行分割', w:275, h:28, i:T('执行分割','按当前模式与边流开关处理选中的边。没有选中边时视口提示「请选中至少一条边！」；处理完会汇报成功数量与失败项。',{s:['进入边模式，选中要分割的边（可多选）','选模式、决定是否开边流','点执行分割，看视口提示里的成功/失败统计']} )}
+ ]},
+
+ {k:'fold', label:'扭曲面检查', i:T('扭曲面检查','找出「不平整的四边面」：把一个四边面按两种对角线各三角化一次，比较两个三角形法线的夹角，超过阈值就认为这个面扭曲。需要 NumPy。'),items:[
+   {k:'row', items:[
+     {k:'text', label:'扭曲阈值', w:48},
+     {k:'slider', id:'twistS', min:0, max:180, step:1, val:5, link:'twistN', w:172,
+      i:T('扭曲阈值滑条','四边面两个三角化三角形法线的夹角阈值（度）。<strong>值越小越严格</strong>，被判定为扭曲的面越多；0 会选中几乎所有四边面，180 基本选不到。',{p:[['范围','0 – 180 度'],['步长','1'],['默认','5.0'],['记忆','写回 optionVar，下次打开还在']]})},
+     {k:'num', id:'twistN', min:0, max:180, step:1, val:5, prec:1, w:50, link:'twistS',
+      i:T('扭曲阈值数值框','和滑条同一个值，双向同步。<strong>鼠标悬停在框上滚滚轮即可 ±1 调节</strong>，不需要点进去，也没有 ▲▼ 按钮。',{p:[['滚轮步长','1'],['范围','0 – 180'],['精度','1 位小数']],wheel:true})}
+   ]},
+   {k:'row', items:[
+     {k:'btn', label:'检查并选择', w:136, h:28, i:T('检查并选择','只检查四边面，把法线夹角超过阈值的四边面选中。<strong>有选择时只检查当前选择，无选择时扫描全场景</strong>；结果数量在视口提示里显示。',{s:['（可选）先选中要检查的物体或面','设好扭曲阈值','点检查并选择，扭曲的四边面会被选中','接着点「三角化」处理它们'],note:'需要 NumPy；缺失时提示「未找到 NumPy，扭曲面检查不可用（需 Maya 2022+）」。'} )},
+     {k:'btn', label:'三角化', w:136, h:28, i:T('三角化','对当前选择执行 Maya 原生 <strong>polyTriangulate</strong>。通常先用「检查并选择」选中扭曲四边面，再点这里把它们切成三角形。',{} )}
+   ]},
+   {k:'row', items:[
+     {k:'btn', label:'Spin 连线', w:275, h:28, i:T('Spin 连线','只对当前选中的边执行 <strong>polyFlipEdge</strong>，翻转三角化后的内部连线方向，用来改善三角面的走向。',{s:['先三角化','选中要翻转的内部连线','点 Spin 连线'],note:'三角面、边界边、非流形边会自动忽略，不会报错。'} )}
+   ]}
+ ]},
+
+ {k:'fold', label:'快速底面', i:T('快速底面','给模型「找一个底面」并一键贴地：生成绿色候选面，点哪个面就把那一面朝下放到地面上并冻结变换。也能把两个物体按候选面互相贴合。'),items:[
+   {k:'menu', label:'候选模式：', wide:true, id:'bfMode', opts:['凸包(高模)','六面安全(包围盒)'], val:0,
+    i:T('候选模式','<strong>凸包(高模)</strong>：按模型凸包取候选面，适合非盒子状的高模，面更贴合外形。<br><strong>六面安全(包围盒)</strong>：只用包围盒的六个面，<strong>永远有结果</strong>，适合规则盒体或凸包失败时兜底。',{p:[['默认','凸包(高模)']]})},
+   {k:'row', items:[
+     {k:'btn', label:'生成候选底面', w:136, h:28, i:T('生成候选底面','选中一个网格物体后点击，会在模型各侧面生成<strong>绿色候选面</strong>。再点任意一个绿色面片，模型就把那一面朝下、贴地并冻结变换。',{s:['选中一个网格物体','点生成候选底面，视口里出现绿色面片','直接点其中一个绿色面片','模型自动旋转平移到该面朝下贴地，并冻结变换']} )},
+     {k:'btn', label:'清除候选', w:136, h:28, i:T('清除候选','删除场景里的绿色候选面，并停止「点选放置」的监听。摆放完或想重来时点它，避免绿面留在场景里被渲染或导出。',{} )}
+   ]},
+   {k:'row', items:[
+     {k:'btn', label:'对齐两个候选面', w:275, h:28, i:T('对齐两个候选面','把一个物体贴合到另一个物体的某个面上，用来堆叠箱子、贴墙摆放。',{s:['先选目标物体（不动的那个）','再选要移动的物体','点本按钮，两个物体各生成一组绿色候选面','先点目标物体的面，再点待移动物体的面','待移动物体旋转 + 平移贴合到该面上'],note:'选择顺序决定谁不动：先选的是目标。'} )}
+   ]}
+ ]},
+
+ {k:'fold', label:'边重建', i:T('边重建','内嵌自边链处理：<strong>重采样 / 平滑 / 圆化 / 解结 / 桥接</strong>，分别放在五个子折叠栏里。作用对象是选中的<strong>开放边链</strong>。需要 NumPy。',{note:'窗口、状态提示、工具架按钮、快捷键安装都没有搬运；结果与错误统一走视口提示。'}),items:[
+   {k:'check', label:'实时预览', id:'rmPreview', val:false, wide:true,
+    i:T('实时预览','勾选后先缓存当前网格的<strong>原始点位</strong>：之后修改参数时先还原再重新计算，所以反复拖参数不会累积误差。',{p:[['生效范围','只对「改点位」的操作生效'],['重采样预览','固定只调点位，不改点数 / 拓扑'],['关闭时','当前结果保留，缓存清空'],['切换物体','自动重新缓存']],note:'预览只改点位；要真的增减点数请取消预览后点「重采样」。'})},
+
+   {k:'fold', label:'重采样', sub:true, i:T('重采样','按样条重新采样选中的开放边链，可以加点、减点或只重排点位。'),items:[
+     {k:'fields', rows:[
+       {label:'采样类型', ctl:{k:'select', id:'rmSpline', opts:['AKIMA','CATMULL_ROM','POLYNOMIAL'], val:0,
+         i:T('采样类型','插值样条：<strong>AKIMA</strong> 抗过冲、最稳；<strong>CATMULL_ROM</strong> 经典 Catmull-Rom，曲线更圆润；<strong>POLYNOMIAL</strong> 多项式参数化，配合下面的弦长指数使用。',{p:[['默认','AKIMA'],['原、','ResampleMesh 的样条下拉']]} )}},
+       {label:'增减点数', ctl:{k:'num', id:'rmStep', min:-1000, max:1000, step:1, val:4, prec:0,
+         i:T('增减点数','目标点数相对当前点数的增量：<strong>&gt;0 加点，&lt;0 减点，0 只重排点位</strong>。',{p:[['范围','-1000 – 1000'],['滚轮步长','1'],['默认','4']],wheel:true})}},
+       {label:'多项式参数化', ctl:{k:'num', id:'rmPT', min:0.15, max:0.5, step:0.01, val:0.15, prec:3,
+         i:T('多项式参数化','POLYNOMIAL 样条的<strong>弦长指数</strong>，控制参数化方式：0.5 接近均匀参数化，0.15 更贴近弦长。只在采样类型选 POLYNOMIAL 时有意义。',{p:[['范围','0.15 – 0.5'],['滚轮步长','0.01'],['精度','3 位小数']],wheel:true})}}
+     ]},
+     {k:'check', label:'按弧长均匀分布', id:'rmSpace', val:false, wide:true,
+      i:T('按弧长均匀分布','按<strong>弧长</strong>重新分布采样点，让点与点之间的实际距离相等，而不是参数相等。',{})},
+     {k:'check', label:'自动清理共线边', id:'rmClean', val:false, wide:true,
+      i:T('自动清理共线边','重连之后溶解共面的新边，避免留下一条直线上的多余分段。',{})},
+     {k:'check', label:'双链分别设点数', id:'rmTwo', val:false, wide:true,
+      i:T('双链分别设点数','正好选中<strong>两条开放边链</strong>时，分别指定各自的目标点数。两条链点数相同时，可以把不对称的一对补齐（例如左右两条轮廓线）。',{s:['选中正好两条开放边链','勾选本项','点「读取两链」把现有点数填进来','分别改链 1 / 链 2 的目标点数','点重采样']})},
+     {k:'fields', rows:[
+       {label:'链 1 点数', ctl:{k:'num', id:'rmA', min:3, max:1000, step:1, val:3, prec:0, dep:'rmTwo',
+         i:T('链 1 点数','第一条边链的目标点数。勾选「双链分别设点数」后才可编辑。',{p:[['范围','3 – 1000'],['滚轮步长','1'],['依赖','双链分别设点数']],wheel:true})}},
+       {label:'链 2 点数', ctl:{k:'num', id:'rmB', min:3, max:1000, step:1, val:3, prec:0, dep:'rmTwo',
+         i:T('链 2 点数','第二条边链的目标点数。点「两链同点数」可一键设成与链 1 相同。',{p:[['范围','3 – 1000'],['滚轮步长','1'],['依赖','双链分别设点数']],wheel:true})}}
+     ]},
+     {k:'text', label:'链 1：未启用', id:'rmALabel', dim:true},
+     {k:'text', label:'链 2：未启用', id:'rmBLabel', dim:true},
+     {k:'row', items:[
+       {k:'btn', label:'读取两链', w:126, h:26, i:T('读取两链','读取当前选中的两条开放边链，把各自的<strong>现有点数</strong>填进链 1 / 链 2 输入框，并记住这次选择。',{note:'选择变化后需要重新点一次，否则会提示「选择已变化，请重新点『读取两链』后再应用」。'} )},
+       {k:'btn', label:'两链同点数', w:126, h:26, i:T('两链同点数','把链 2 的目标点数设为与链 1 相同，用来补齐不对称的一对边链。',{})}
+     ]},
+     {k:'row', items:[
+       {k:'btn', label:'重采样', w:126, h:28, i:T('重采样','按当前样条与点数<strong>重采样选中的开放边链</strong>：会真的改变点数与拓扑（实时预览开启时只调点位）。',{} )},
+       {k:'btn', label:'均匀分布', w:126, h:28, i:T('均匀分布','AKIMA + 弧长均匀分布，<strong>只改点位不动拓扑</strong>。',{} )}
+     ]}
+   ]},
+
+   {k:'fold', label:'平滑', sub:true, i:T('平滑','对边链做 Laplacian / Taubin 平滑，去掉抖动与锯齿。'),items:[
+     {k:'fields', rows:[
+       {label:'迭代次数', ctl:{k:'num', id:'smIt', min:1, max:50, step:1, val:1, prec:0,
+         i:T('迭代次数','平滑迭代遍数。次数越多越平，但也越收缩；配合 SHARP 类型可以多次迭代而不明显缩体积。',{p:[['范围','1 – 50'],['滚轮步长','1'],['默认','1']],wheel:true})}},
+       {label:'强度', ctl:{k:'num', id:'smF', min:0.001, max:1, step:0.05, val:0.5, prec:3,
+         i:T('强度','每次迭代向邻点平均位置移动的比例。0.5 是折中，接近 1 会迅速塌平。',{p:[['范围','0.001 – 1.0'],['滚轮步长','0.05'],['精度','3 位小数'],['默认','0.5']],wheel:true})}},
+       {label:'权重', ctl:{k:'select', id:'smW', opts:['distance','uniform'], val:0,
+         i:T('权重','<strong>distance</strong>：按相邻边长度加权，长边影响小，结果更自然。<br><strong>uniform</strong>：等权平均，点距不均时也能强行拉平。',{p:[['默认','distance']]} )}},
+       {label:'类型', ctl:{k:'select', id:'smT', opts:['SMOOTH','SHARP'], val:0,
+         i:T('平滑类型','<strong>SMOOTH</strong> = Laplacian 平滑，直接平均，会轻微收缩。<br><strong>SHARP</strong> = Taubin 平滑，先平滑再反向锐化，保体积、保特征，适合多次迭代。',{p:[['默认','SMOOTH']]} )}}
+     ]},
+     {k:'btn', label:'平滑', w:255, h:28, i:T('平滑','按当前迭代次数、强度、权重与类型平滑选中的边链。',{} )}
+   ]},
+
+   {k:'fold', label:'圆化', sub:true, i:T('圆化','把折线边链拟合成圆弧。'),items:[
+     {k:'fields', rows:[
+       {label:'角度', ctl:{k:'num', id:'arcA', min:0.1, max:359.9, step:5, val:90, prec:2,
+         i:T('圆弧角度','拟合圆弧所对的圆心角。<strong>90</strong> 是四分之一圆，180 是半圆，接近 360 几乎闭合成整圆。',{p:[['范围','0.1 – 359.9'],['滚轮步长','5'],['精度','2 位小数'],['默认','90.00']],wheel:true})}}
+     ]},
+     {k:'check', label:'反向', id:'arcFlip', val:false, wide:true,
+      i:T('反向','把圆弧弯向另一侧（凹凸互换）。',{})},
+     {k:'btn', label:'圆化', w:255, h:28, i:T('圆化','把选中的开放边链拟合成圆弧，<strong>链的两个端点保持不动</strong>，只调整中间点。',{} )}
+   ]},
+
+   {k:'fold', label:'解结', sub:true, i:T('解结','缓解边链打结与扭曲：用两端切线引导中间点重新排布。'),items:[
+     {k:'fields', rows:[
+       {label:'宽度', ctl:{k:'num', id:'ukW', min:-1000, max:1000, step:0.01, val:0, prec:4,
+         i:T('宽度','解结时给中间点的横向偏移量，可正可负；0 表示只按切线引导、不额外撑开。',{p:[['范围','-1000 – 1000'],['滚轮步长','0.01'],['精度','4 位小数'],['默认','0']],wheel:true})}},
+       {label:'张力', ctl:{k:'num', id:'ukT', min:-1, max:1, step:0.01, val:0.5, prec:3,
+         i:T('张力','两端切线对中间点的影响强度。值大更贴近端点方向、更「直」，值小更松。',{p:[['范围','-1 – 1'],['滚轮步长','0.01'],['精度','3 位小数'],['默认','0.5']],wheel:true})}},
+       {label:'采样类型', ctl:{k:'select', id:'ukS', opts:['AKIMA','CATMULL_ROM','POLYNOMIAL'], val:0,
+         i:T('解结采样类型','解结后重新布点使用的样条，含义与重采样里的采样类型一致。',{p:[['默认','AKIMA']]} )}}
+     ]},
+     {k:'check', label:'均匀', id:'ukU', val:true, wide:true,
+      i:T('均匀','按<strong>弧长均匀分布</strong>内部点，默认勾选。取消后按样条参数布点。',{})},
+     {k:'btn', label:'解结', w:255, h:28, i:T('解结','用两端切线引导中间点，缓解打结和扭曲。',{} )}
+   ]},
+
+   {k:'fold', label:'桥接', sub:true, i:T('桥接','在两条或多条边循环之间生成连接边或桥接面。'),items:[
+     {k:'fields', rows:[
+       {label:'匹配模式', ctl:{k:'select', id:'brM', opts:['shortest','basic'], val:0,
+         i:T('匹配模式','<strong>shortest</strong>：按最短总长度匹配两条链上的点，结果扭转最少。<br><strong>basic</strong>：按顺序一一匹配，链方向一致时更可控。',{p:[['默认','shortest']]} )}},
+       {label:'扭转', ctl:{k:'num', id:'brT', min:-1000, max:1000, step:1, val:0, prec:0,
+         i:T('扭转','桥接时人为错位多少个点，用来纠正两条链起点不一致造成的拧麻花。',{p:[['范围','-1000 – 1000'],['滚轮步长','1'],['默认','0']],wheel:true})}}
+     ]},
+     {k:'check', label:'仅生成连接边', id:'brC', val:true, wide:true,
+      i:T('仅生成连接边','<strong>勾选</strong>：只生成连接边，不建面。<br><strong>取消</strong>：用 polyBridgeEdge 生成桥接面，要求边循环是开放边界。',{})},
+     {k:'check', label:'反转', id:'brR', val:false, wide:true,
+      i:T('反转','反转其中一条链的匹配方向，桥接结果拧了 180° 时勾它。',{})},
+     {k:'btn', label:'桥接', w:255, h:28, i:T('桥接','在两个或多个边循环之间桥接，按当前匹配模式、扭转与开关执行。',{} )}
+   ]}
+ ]},
+
+ {k:'fold', label:'智能合并分离', i:T('智能合并分离','按「片」而不是按物体来合并 / 分离：自动判断该合并的是挨得近的片，该分离的是独立片还是整个物体。'),items:[
+   {k:'row', items:[
+     {k:'btn', label:'智能合并', w:136, h:30, i:T('智能合并','合并选中物体，并<strong>自动把挨得近的片焊在一起</strong>。是否焊接顶点由下面的「焊接点」开关决定。',{p:[['焊接点','是 / 否，默认是']]} )},
+     {k:'btn', label:'智能分离', w:136, h:30, i:T('智能分离','<strong>自动判断该分离的是片还是物体</strong>：选面时走 Maya 原生的 <strong>Extract Face</strong>，选物体时按壳拆成独立物体。分离后自动只选中抽出的新片、居中轴心，并清理原物体与新片的构造历史。',{p:[['选面','Maya 原生 Extract / Duplicate Face'],['选物体','按壳分离（原流程不变）'],['复制面','是 / 否，默认否（抽走原面）']]} )}
+   ]},
+   {k:'row', items:[
+     {k:'radio', label:'焊接点', id:'weld', opts:['是','否'], val:0,
+      i:T('焊接点','智能合并时是否焊接重合 / 邻近顶点。选「否」则只合并成一个物体、保留各自的点。',{p:[['默认','是']]})},
+     {k:'radio', label:'复制面', id:'keep', opts:['是','否'], val:1,
+      i:T('复制面','智能分离选面时是否保留原面。选「是」等于 Maya 的 <strong>Duplicate Face</strong>（原面保留，抽出副本）；选「否」等于 <strong>Extract Face</strong>（抽走原面）。',{p:[['默认','否']]})}
+   ]}
+ ]},
+
+ {k:'spacer',h:5},
+ {k:'row', items:[
+   {k:'btn', label:'转角改线', w:149, h:28, grey:true, i:T('转角改线','更改转角处的布线走向，让转角更干净。<strong>上下面如果有需要一起选中</strong>。',{})},
+   {k:'btn', label:'选中元素加环线', w:149, h:28, grey:true, i:T('选中元素加环线','以选中元素为中心加环线，<strong>点、线、面都可以</strong>作为中心。',{})}
+ ]},
+ {k:'row', items:[
+   {k:'btn', label:'智能插入 I', w:149, h:28, grey:true, i:T('智能插入 I','交互式智能插入（Round Inset v1.68）：弹出一个浮动小窗，用 <strong>Offset / Round / Angle</strong> 三个滑条实时调插入偏移、圆角与角度，配 Inset / Refine / Even / Remove / Done 五个按钮逐步成型。',{p:[['Offset','-1 – 1，步长 0.001，点 + 可翻倍量程'],['Round','-1 – 1，步长 0.001'],['Angle','60 – 90（可输入 0 – 180），步长 0.1'],['按钮','Inset 插入 / Refine 细化 / Even 内角均分 / Remove 撤回 / Done 清理历史']]})},
+   {k:'btn', label:'智能插入 II', w:149, h:28, grey:true, i:T('智能插入 II','面插入的另一种做法，<strong>能处理单面片</strong>（只有一个面的壳体）。选中物体时会自动转成面选择再插入。',{})}
+ ]},
+ {k:'row', items:[
+   {k:'btn', label:'顶点法线对齐', w:149, h:28, grey:true, i:T('顶点法线对齐','把顶点法线对齐到<strong>选中的点法线方向</strong>，用来手工修硬边阴影与法线断裂。',{})},
+   {k:'btn', label:'吸附平面', w:149, h:28, grey:true, i:T('吸附平面','吸附到<strong>自定义三点确定的平面</strong>。弹出 Snap to Plane 小窗：先「定义平面」拾取三个点，再「吸附到平面」把选中元素压到该平面上。',{s:['点吸附平面，弹出 Snap to Plane 窗口','点「定义平面」，在视口里依次拾取三个点','选中要压平的元素','点「吸附到平面」']})}
+ ]},
+ {k:'row', items:[
+   {k:'btn', label:'环线随意滑移', w:149, h:28, grey:true, i:T('环线随意滑移','让新增的环线随意旋转滑移，<strong>不影响外轮廓</strong>。用来把环线挪到想要的位置而不破坏 silhouette。',{})},
+   {k:'btn', label:'法线权重置平', w:149, h:28, grey:true, i:T('法线权重置平','法线权重（Smart Outside）：按<strong>容差角度</strong>把平滑法线推给外侧相邻面，让外侧大面保持平整、内侧小面承担过渡。',{})}
+ ]},
+ {k:'spacer',h:10},
+ {k:'row', items:[
+   {k:'btn', label:'拖拽吸附', w:149, h:28, grey:true, i:T('拖拽吸附','进入拖拽上下文（Click2dTo3dCtx），在视口里直接拖着物体吸附到别的表面。',{p:[['Ctrl','5° 旋转步进'],['Shift','复制一份再拖'],['Shift + Ctrl','对齐到最近边方向'],['退出','右键结束上下文并清理临时节点']]})},
+   {k:'btn', label:'沿最近边对齐', w:149, h:28, grey:true, i:T('沿最近边对齐','选中一个物体，自动找到离它最近的边，把物体沿那条边的方向对齐摆好。物体在组里时会先临时提到世界层级再计算。',{})}
+ ]}
+]},
+
+{k:'frame', label:'选择',
+ i:T('选择','按法线角度扩选、按相似度选物体，以及隔段选线 / 选区选择 / 选硬边等选择辅助。'),items:[
+ {k:'fold', label:'按角度选面', i:T('按角度选面','从当前选中的面出发，按<strong>面法线夹角</strong>逐步扩选：相邻面法线夹角小于阈值就一起选进来，用来一次性选中一片朝向相近的面。'),items:[
+   {k:'slidergrp', label:'角度', id:'angS', min:0, max:180, step:1, val:25, w:225,
+    i:T('角度','法线夹角阈值（度）。<strong>值越大扩得越远</strong>，180 几乎等于全选；0 只选法线完全一致的面。',{p:[['范围','0 – 180'],['滚轮步长','1'],['默认','25']],wheel:true})},
+   {k:'btn', label:'选择', w:50, h:24, i:T('选择（按角度扩选）','记住当前面选择作为起点，然后按角度阈值生长选择。',{s:['先选中一个或多个面作为种子','调好角度','点选择，朝向相近的相邻面会被一起选中']})}
+ ]},
+ {k:'fold', label:'选择相似物体', i:T('选择相似物体','以当前选中的网格为样本，在场景里找出相似的物体一起选中。'),items:[
+   {k:'btn', label:'选择相似物体', w:275, h:25, i:T('选择相似物体','按样本物体的几何特征匹配场景中的其它网格。没有选择时提示「选择一个物体先！」。',{s:['选中一个样本物体','决定是否忽略大小','点选择相似物体']})},
+   {k:'radio', label:'忽略大小：', id:'simSize', opts:['是','否'], val:0, wide:true,
+    i:T('忽略大小','<strong>是</strong>：只比形状，缩放不同的实例也算相似（常用）。<br><strong>否</strong>：尺寸也要接近才算相似。',{p:[['默认','是']]})}
+ ]},
+ {k:'spacer',h:5},
+ {k:'btn', label:'隔段选线', w:300, h:28, grey:true, i:T('隔段选线','先选<strong>两条循环线</strong>，工具按它们之间的间隔沿整条循环线隔段选下去，用来做规律间隔的选线（例如每隔 N 条选一条）。',{s:['选中两条边（它们要在同一条循环线上）','点隔段选线','工具算出间隔并沿循环线扩展选择'],note:'不是恰好两条边时提示「先选择两条循环线!!!」。找不到共同 Loop 时会退回尝试 Ring。'})},
+ {k:'spacer',h:2},
+ {k:'btn', label:'选区选择', w:300, h:28, grey:true, i:T('选区选择','<strong>用选中的线划分区域</strong>：以当前边选择为边界，把围起来的区域填成面选择。点击后会挂一个一次性 SelectionChanged 监听来完成填充。',{})},
+ {k:'spacer',h:2},
+ {k:'btn', label:'选硬边', w:300, h:28, grey:true, i:T('选硬边','选中硬边（法线不连续的边）。<strong>选中物体</strong>时先切到边模式再选整个物体的硬边；<strong>已经选中边</strong>时只在当前选择里挑硬边。',{note:'既没有物体也没有边时提示「先选中物体或线」。'})},
+ {k:'spacer',h:2},
+ {k:'btn', label:'测试', w:300, h:28, grey:true, i:T('测试','开发期留下的测试按钮，只在视口提示里打印「测试内容！」，不改动场景。',{})}
+]},
+
+{k:'frame', label:'命名',
+ i:T('命名','打开「零距命名材质管理」窗口：批量规范模型 / 材质 / 贴图命名，并自动匹配连接颜色与法线贴图。'),items:[
+ {k:'btn', label:'自动命名', w:300, h:28, grey:true, i:T('自动命名','打开独立的 <strong>零距命名材质管理</strong> 窗口（1240×560，Qt 浮动窗，始终压在 Maya 主窗口之上）。',{p:[['命名规则','Mesh 前缀/后缀、材质前缀/后缀、贴图前缀、颜色后缀、法线后缀（例如 SM_ / M_ / T_ / _color / _normal）'],['主要按钮','更新场景 / 应用命名 / 材质命名匹配模型 / 一键添加颜色贴图 / 一键连接法线'],['清理','清除命名空间 / 删除未用节点'],['多维材质','可分别恢复颜色贴图与法线贴图'],['打开时','只读刷新，不会动已连好的材质；「更新场景」才会创建/转换材质']]})}
+]},
+
+{k:'frame', label:'UV',
+ i:T('UV','UV 检查材质、四种传递 UV 模式，以及一键打直 UV shell。'),items:[
+ {k:'fold', label:'UV检查', i:T('UV检查','程序化生成一张带棋盘格与 UV 编号的检查贴图材质，用来看 UV 拉伸、方向与 texel density。三个数值框都支持悬停滚轮。'),items:[
+   {k:'fields', uv:true, rows:[
+     {label:'贴图大小:', ctl:{k:'num', id:'uvRes', min:0, max:8192, step:256, val:2048, prec:0, w:80,
+       i:T('贴图大小','检查贴图的分辨率（像素）。<strong>悬停滚轮 ±256</strong>，范围 0–8192。',{p:[['范围','0 – 8192'],['滚轮步长','256'],['默认','2048']],wheel:true})}},
+     {label:'棋盘格1大小', ctl:{k:'num', id:'uvC1', min:0, max:1024, step:256, val:512, prec:0, w:80,
+       i:T('棋盘格1大小','大棋盘格的格子尺寸。<strong>悬停滚轮 ±256</strong>，范围 0–1024。',{p:[['范围','0 – 1024'],['滚轮步长','256'],['默认','512']],wheel:true})}},
+     {label:'棋盘格2大小', ctl:{k:'num', id:'uvC2', min:4, max:null, step:8, val:32, prec:0, w:80,
+       i:T('棋盘格2大小','细棋盘格的格子尺寸，用来看局部拉伸。<strong>悬停滚轮 ±8</strong>，最小 4。',{p:[['最小','4'],['滚轮步长','8'],['默认','32']],wheel:true})}}
+   ]},
+   {k:'row', items:[
+     {k:'btn', label:'创建/更新', w:136, h:28, i:T('创建/更新','按当前三个数值创建或更新 UV 检查材质（程序化节点网络，不依赖外部图片文件）。',{})},
+     {k:'btn', label:'循环指定材质', w:136, h:28, i:T('循环指定材质','在检查材质与原材质之间循环切换指定给选中物体，方便对照 UV 与最终外观。',{})}
+   ]}
+ ]},
+ {k:'fold', label:'传递UV', open:true, i:T('传递UV','把一个参考物体的 UV（或形状）传给当前选中的目标物体。内嵌 PolyravenUV 的 mel proc，逻辑不转译，Python 侧只负责 UI 与参考物体状态。'),items:[
+   {k:'text', label:'(请先选中参考物体)', id:'uvRefLabel', center:true, dim:true},
+   {k:'btn', label:'设为参考物体', w:275, h:28, i:T('设为参考物体','把当前选中物体记为传递源。多选时取<strong>最后一个</strong>；设置成功后上方状态文字会变成物体名。',{note:'没选物体时提示「请先选中一个物体作为参考」。'})},
+   {k:'row', items:[
+     {k:'btn', label:'传递UV (ID)', w:136, h:28, i:T('传递UV (ID)','按<strong>点/面 ID 顺序</strong>采样传递 UV（sampleSpace=4）。拓扑一致、只是点位不同的物体最稳。',{})},
+     {k:'btn', label:'传递UV (拓扑)', w:136, h:28, i:T('传递UV (拓扑)','按<strong>拓扑连通关系</strong>采样传递 UV（sampleSpace=5）。点序不同但结构一致的物体用这个。',{})}
+   ]},
+   {k:'row', items:[
+     {k:'btn', label:'投影UV', w:136, h:28, i:T('投影UV','按空间投影把参考物体的 UV 投到目标上（sampleSpace=0），适合外形接近但拓扑完全不同的物体。',{})},
+     {k:'btn', label:'传递形状', w:136, h:28, i:T('传递形状','不传 UV，而是把参考物体的<strong>形状（点位）</strong>传给目标（transferPositions）。用来把高模外形套到低模拓扑上。',{})}
+   ]}
+ ]},
+ {k:'spacer',h:5},
+ {k:'btn', label:'打直UV', w:330, h:28, grey:true, i:T('打直UV','把当前选中的 <strong>UV shell 尽可能拉直成矩形</strong>（Rectangulate）。长条状 UV（袖子、裤腿、绑带）一键规整。',{s:['在 UV 编辑器里选中要打直的 shell 或面','点打直UV'],note:'没有选择时提示「请先选中要打直的 UV shell 或面」。'})}
+]},
+
+{k:'frame', label:'烘焙',
+ i:T('烘焙','Maya 到 Marmoset Toolbag 的桥接入口。'),items:[
+ {k:'btn', label:'Maya2Marmoset', w:300, h:28, grey:true, i:T('Maya2Marmoset','打开 Maya2Marmoset 桥接面板：<strong>自动分组、导出 FBX 并推送给 Toolbag</strong>。按 _low / _high / _cage / _offset 后缀自动分类，生成对应的 Bake Project 与 Bake Group。',{p:[['分组模式','pivot（按枢轴距离）'],['容差','1.0'],['端口','8730'],['临时目录','%TEMP%\\Maya2Marmoset'],['命名','*_bakeproject / *_bakegroup，高模多件时 _high_01、_high_02']],note:'Toolbag 侧的监听与 Run 需要手动启动，桥接面板只负责 Maya 这一半。'})}
+]}
+];
+
+/* =========================================================
+   引擎：渲染 / 悬停说明 / 滚轮步进 / 搜索 / 安装演示
+   ========================================================= */
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+function strip(h){const d=el('div');d.innerHTML=h;return d.textContent||'';}
+function fmt(v,p){return p>0?Number(v).toFixed(p):String(Math.round(v));}
+
+let uid=0; const TIPS={}, BY_TITLE={}, VALUES=[], DEPS=[], SYNC=[], LINKS=[];
+function reg(tip,label,path){
+  if(!tip)return null;
+  const id='t'+(++uid);
+  const hay=[label||'',tip.t,strip(tip.d),(path||[]).join(' ')].join(' ').toLowerCase();
+  TIPS[id]=Object.assign({},tip,{id:id,path:path||[],hay:hay});
+  if(!BY_TITLE[tip.t])BY_TITLE[tip.t]=id;
+  return id;
+}
+function tipAttr(e,id){if(id)e.dataset.tip=id;return e;}
+
+/* ---------- 视口提示 ---------- */
+let toastT=0;
+function toast(msg,kind){
+  const t=$('#toast');t.textContent=msg;t.className='show'+(kind?' '+kind:'');
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.className='';},2200);
+}
+
+/* ---------- 控件 ---------- */
+function makeNum(n,path){
+  const inp=el('input','mj-num');
+  inp.type='text';inp.inputMode='decimal';inp.spellcheck=false;inp.autocomplete='off';
+  inp.value=fmt(n.val,n.prec||0);
+  if(n.w)inp.style.width=n.w+'px';
+  const st={min:n.min==null?null:n.min,max:n.max==null?null:n.max,step:n.step,val:n.val,prec:n.prec||0,id:n.id};
+  inp._st=st;
+  if(n.id)inp.id=n.id;
+  VALUES.push({el:inp,kind:'num',def:n.val,st:st});
+  if(n.id)SYNC[n.id]=inp;
+  if(n.dep)DEPS.push({el:inp,dep:n.dep});
+  const id=reg(n.i,n.id,path);tipAttr(inp,id);
+  if(n.wheel&&id)TIPS[id].wheelInfo='滚轮 ±'+st.step+(st.min!=null?' · 下限 '+st.min:'')+(st.max!=null?' · 上限 '+st.max:'');
+  inp.addEventListener('wheel',e=>{e.preventDefault();stepNum(inp,e.deltaY<0?1:-1);},{passive:false});
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='ArrowUp'){e.preventDefault();stepNum(inp,1);}
+    else if(e.key==='ArrowDown'){e.preventDefault();stepNum(inp,-1);}
+    else if(e.key==='Enter'){inp.blur();}
+  });
+  inp.addEventListener('change',()=>{commitNum(inp);});
+  inp.addEventListener('blur',()=>{commitNum(inp);});
+  inp.addEventListener('focus',()=>{inp.select();showIns(id,false);});
+  return inp;
+}
+function clampNum(v,st){
+  if(st.min!=null)v=Math.max(st.min,v);
+  if(st.max!=null)v=Math.min(st.max,v);
+  return st.prec>0?parseFloat(v.toFixed(st.prec)):Math.round(v);
+}
+function stepNum(inp,dir){
+  if(inp.disabled)return;
+  const st=inp._st;let v=parseFloat(inp.value);if(isNaN(v))v=st.val;
+  v=clampNum(v+dir*st.step,st);
+  inp.value=fmt(v,st.prec);
+  inp.classList.add('wheeling');clearTimeout(inp._wt);
+  inp._wt=setTimeout(()=>inp.classList.remove('wheeling'),450);
+  afterNum(inp);
+}
+function commitNum(inp){
+  const st=inp._st;let v=parseFloat(inp.value);
+  if(isNaN(v))v=st.val;
+  v=clampNum(v,st);inp.value=fmt(v,st.prec);afterNum(inp);
+}
+function afterNum(inp){
+  const v=parseFloat(inp.value);
+  if(inp._link&&SYNC[inp._link]){const s=SYNC[inp._link];if(s&&s.type==='range')s.value=v;}
+  updateChainLabels();
+}
+function makeRange(n,path,grp){
+  const r=el('input','mj-range'+(grp?' grp':''));
+  r.type='range';r.min=n.min;r.max=n.max;r.step=n.step;r.value=n.val;
+  if(n.w)r.style.width=n.w+'px';
+  if(n.id){SYNC[n.id]=r;r.id=n.id;}
+  VALUES.push({el:r,kind:'range',def:n.val});
+  const id=reg(n.i,n.id,path);tipAttr(r,id);
+  if(n.wheel&&id)TIPS[id].wheelInfo='滚轮 ±'+n.step+' · 范围 '+n.min+'–'+n.max;
+  r.addEventListener('input',()=>{
+    const v=parseFloat(r.value);
+    if(n.link&&SYNC[n.link]){const f=SYNC[n.link];if(f&&f.classList.contains('mj-num')){f.value=fmt(v,f._st.prec);}}
+    if(grp&&grp.num){grp.num.value=fmt(v,grp.num._st.prec);}
+  });
+  r.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const d=e.deltaY<0?1:-1;
+    let v=clampNum(parseFloat(r.value)+d*parseFloat(r.step),{min:parseFloat(r.min),max:parseFloat(r.max),step:parseFloat(r.step),prec:2});
+    r.value=v;r.dispatchEvent(new Event('input'));
+  },{passive:false});
+  return r;
+}
+function makeCheck(n,path){
+  const lab=el('label','mj-check');
+  if(n.wide)lab.style.width='255px';
+  const inp=el('input');inp.type='checkbox';inp.checked=!!n.val;
+  const box=el('span','box');
+  lab.appendChild(inp);lab.appendChild(box);lab.appendChild(el('span',null,n.label));
+  VALUES.push({el:inp,kind:'check',def:!!n.val});
+  if(n.id){SYNC[n.id]=inp;inp.id=n.id;}
+  const id=reg(n.i,n.label,path);tipAttr(lab,id);
+  inp.addEventListener('change',()=>{
+    applyDeps();updateChainLabels();
+  });
+  return lab;
+}
+function makeRadio(n,path){
+  const wrap=el('div','mj-radio');
+  if(n.wide)wrap.style.width='255px';
+  wrap.appendChild(el('span','rl',n.label));
+  const gname='g'+(++uid);
+  n.opts.forEach((o,idx)=>{
+    const l=el('label');
+    const inp=el('input');inp.type='radio';inp.name=gname;inp.checked=(idx===n.val);
+    l.appendChild(inp);l.appendChild(el('span','rd'));l.appendChild(el('span',null,o));
+    wrap.appendChild(l);
+    VALUES.push({el:inp,kind:'radio',def:idx===n.val});
+  });
+  const id=reg(n.i,n.label,path);tipAttr(wrap,id);
+  return wrap;
+}
+function makeSelect(n,path){
+  const s=el('select','mj-select'+(n.wide?' wide':''));
+  n.opts.forEach(o=>s.appendChild(el('option',null,o)));
+  s.selectedIndex=n.val||0;
+  VALUES.push({el:s,kind:'select',def:n.val||0});
+  if(n.id){SYNC[n.id]=s;s.id=n.id;}
+  const id=reg(n.i,n.label||n.id,path);tipAttr(s,id);
+  return s;
+}
+function makeBtn(n,path){
+  const b=el('button','mj-btn'+(n.grey?' grey':''));
+  b.type='button';
+  b.style.width=n.w+'px';b.style.height=(n.h||28)+'px';
+  b.appendChild(el('span','dot'));
+  b.appendChild(el('span',null,n.label));
+  const id=reg(n.i,n.label,path);tipAttr(b,id);
+  b.addEventListener('click',()=>{
+    b.classList.remove('fire');void b.offsetWidth;b.classList.add('fire');
+    runAction(n);
+  });
+  return b;
+}
+function runAction(n){
+  const special=ACT[n.label];
+  if(special)special(n);
+}
+function numVal(id,fallback){const e=SYNC[id];if(!e)return fallback;const v=parseFloat(e.value);return isNaN(v)?fallback:v;}
+
+/* 与真实工具一致的联动行为 */
+const ACT={
+  '读取两链':()=>{
+    const two=SYNC.rmTwo;
+    if(!two||!two.checked)return;
+    setNum('rmA',12);setNum('rmB',9);updateChainLabels();
+  },
+  '两链同点数':()=>{
+    const two=SYNC.rmTwo;
+    if(!two||!two.checked)return;
+    setNum('rmB',numVal('rmA',3));updateChainLabels();
+  },
+  '设为参考物体':()=>{
+    const l=$('#uvRefLabel');if(l){l.textContent='pReferenceShape';l.classList.remove('dim');l.style.color='var(--ok)';}
+  }
+};
+function setNum(id,v){const e=SYNC[id];if(!e||!e._st)return;e.value=fmt(clampNum(v,e._st),e._st.prec);}
+function applyDeps(){
+  DEPS.forEach(d=>{
+    const c=SYNC[d.dep];const on=c?(c.type==='checkbox'?c.checked:true):true;
+    d.el.disabled=!on;
+    const lab=d.el.closest('.mj-fields');
+    if(lab)lab.style.opacity=on?'1':'.45';
+  });
+}
+function updateChainLabels(){
+  const two=SYNC.rmTwo,a=$('#rmALabel'),b=$('#rmBLabel');
+  const on=two&&two.checked;
+  if(a)a.textContent=on?('链 1：目标 '+fmt(numVal('rmA',3),0)+' 点'):'链 1：未启用';
+  if(b)b.textContent=on?('链 2：目标 '+fmt(numVal('rmB',3),0)+' 点'):'链 2：未启用';
+}
+
+/* ---------- 方向盘 ---------- */
+const PLANES={xy:{on:'#4073b3',off:'#1a1f29',n:'XY'},zy:{on:'#b35940',off:'#291c1a',n:'ZY'},zx:{on:'#59b359',off:'#1a261c',n:'ZX'}};
+let curPlane='xy';
+function makePad(path){
+  const pad=el('div','mj-pad');
+  const dirs=[['up','↑','上'],['down','↓','下'],['left','←','左'],['right','→','右']];
+  dirs.forEach(d=>{
+    const b=el('button','ar '+d[0],d[1]);b.type='button';
+    const id=reg(T('向'+d[2]+'推坐标轴','沿当前平面（<strong>'+PLANES[curPlane].n+'</strong>）把 pivot 推到包围盒的'+d[2]+'边缘。只动坐标轴，不动几何体。'),'向'+d[2],path);
+    tipAttr(b,id);
+    b.addEventListener('click',()=>{
+      b.classList.remove('fire');void b.offsetWidth;b.classList.add('fire');
+    });
+    pad.appendChild(b);
+  });
+  ['xy','zy','zx'].forEach((p,idx)=>{
+    const b=el('button','pl p'+(idx+1),PLANES[p].n);b.type='button';
+    b.style.background=p===curPlane?PLANES[p].on:PLANES[p].off;
+    b.dataset.plane=p;
+    const id=reg(T('操作平面 '+PLANES[p].n,'把方向盘切换到 <strong>'+PLANES[p].n+'</strong> 平面：左右上下四个方向随后按该平面的两个轴映射到包围盒边界。',{p:[['XY','左右 = X，上下 = Y'],['ZY','左右 = Z，上下 = Y'],['ZX','左右 = X，上下 = Z'],['默认','XY（蓝色高亮）']]}),'平面 '+PLANES[p].n,path);
+    tipAttr(b,id);
+    b.addEventListener('click',()=>{
+      curPlane=p;
+      $$('.mj-pad .pl').forEach(x=>{x.style.background=PLANES[x.dataset.plane][x.dataset.plane===p?'on':'off'];});
+    });
+    pad.appendChild(b);
+  });
+  return pad;
+}
+
+/* ---------- 渲染 ---------- */
+const mjRoot=$('#mjRoot');
+const mjPanel=$('.maya-panel');
+function render(node,path){
+  const p=path||[];
+  switch(node.k){
+    case 'frame': case 'fold': {
+      const isFrame=node.k==='frame';
+      const wrap=el('div',(isFrame?'mj-frame':'mj-fold'+(node.sub?' sub':'')+(node.tiny?' tiny':''))+(node.open?' open':''));
+      const h=el('div',isFrame?'mj-frame-h':'mj-fold-h');
+      h.appendChild(el('span','car','▶'));
+      h.appendChild(el('span',null,node.label));
+      const id=reg(node.i,node.label,p);tipAttr(h,id);
+      h.addEventListener('click',()=>{wrap.classList.toggle('open');});
+      const body=el('div',isFrame?'mj-frame-b':'mj-fold-b');
+      const inner=el('div','inner');const pad=el('div','pad');
+      (node.items||[]).forEach(c=>{const e=render(c,p.concat(node.label));if(e)pad.appendChild(e);});
+      inner.appendChild(pad);body.appendChild(inner);
+      wrap.appendChild(h);wrap.appendChild(body);
+      return wrap;
+    }
+    case 'row': {
+      const r=el('div','mj-row');
+      (node.items||[]).forEach(c=>{const e=render(c,p);if(e)r.appendChild(e);});
+      return r;
+    }
+    case 'fields': {
+      const g=el('div','mj-fields'+(node.uv?' uv':''));
+      node.rows.forEach(row=>{
+        g.appendChild(el('label',null,row.label));
+        const c=render(row.ctl,p.concat(row.label));
+        if(c&&row.ctl.datasetName)c.dataset.name=row.ctl.datasetName;
+        if(c)c.dataset.name=row.label;
+        g.appendChild(c);
+      });
+      return g;
+    }
+    case 'btn': return makeBtn(node,p);
+    case 'num': return makeNum(node,p);
+    case 'slider': {
+      const r=makeRange(node,p,false);r.dataset.name=node.id==='twistS'?'扭曲阈值':(node.id||'滑条');
+      if(node.link)LINKS.push([node.id,node.link]);
+      const wrap=el('div','mj-slider');wrap.style.width=(node.w||172)+'px';wrap.appendChild(r);
+      return wrap;
+    }
+    case 'slidergrp': {
+      const wrap=el('div','mj-row');wrap.style.width=(node.w||250)+'px';wrap.style.gap='4px';
+      wrap.appendChild(el('span','mj-txt',node.label));
+      const num={k:'num',id:node.id+'N',min:node.min,max:node.max,step:node.step,val:node.val,prec:0,w:44,i:node.i,wheel:true};
+      const r=makeRange(Object.assign({},node,{w:null,link:num.id}),p,true);
+      r.dataset.name=node.label;r.style.flex='1 1 auto';
+      const f=makeNum(num,p);f.dataset.name=node.label;f.style.width='44px';
+      r._grpNum=f;f._link=node.id;LINKS.push([node.id,num.id]);
+      wrap.appendChild(r);wrap.appendChild(f);
+      return wrap;
+    }
+    case 'check': return makeCheck(node,p);
+    case 'radio': return makeRadio(node,p);
+    case 'select': return makeSelect(node,p);
+    case 'menu': {
+      const row=el('div','mj-menurow');
+      row.appendChild(el('span',null,node.label));
+      row.appendChild(makeSelect(node,p));
+      return row;
+    }
+    case 'text': {
+      const t=el('div','mj-txt'+(node.dim?' dim':'')+(node.center?' center':''),node.label);
+      if(node.id)t.id=node.id;
+      if(node.w)t.style.width=node.w+'px';
+      return t;
+    }
+    case 'spacer': {const s=el('div','mj-spacer');s.style.height=(node.h||5)+'px';return s;}
+    case 'pad': return makePad(p);
+  }
+  return null;
+}
+const mjTabs=$('#mjTabs'),tabPages={};
+const TAB_HOW=[['拖动','按住标签左右拖动，调整分区顺序'],['双击','把该分区弹成独立窗口'],['右键','弹出当前分区 / 合并全部'],['关闭小窗','自动合并回主面板原位置']];
+PANEL.forEach((f,idx)=>{
+  const btn=el('button','mj-tab'+(idx===0?' active':''),f.label);
+  btn.type='button';btn.setAttribute('role','tab');
+  btn.setAttribute('aria-selected',idx===0?'true':'false');
+  btn.dataset.tab=f.label;
+  tipAttr(btn,reg(T(f.label,f.i?f.i.d:'',{p:TAB_HOW}),f.label,['选项卡']));
+  btn.addEventListener('click',()=>activateTab(f.label));
+  mjTabs.appendChild(btn);
+
+  const page=el('div','mj-tabpage'+(idx===0?' active':''));
+  page.dataset.tab=f.label;page.setAttribute('role','tabpanel');
+  (f.items||[]).forEach(c=>{const e=render(c,[f.label]);if(e)page.appendChild(e);});
+  mjRoot.appendChild(page);
+  tabPages[f.label]=page;
+});
+function activateTab(label){
+  if(!tabPages[label])return;
+  Object.keys(tabPages).forEach(k=>{
+    const on=k===label;
+    tabPages[k].classList.toggle('active',on);
+    const b=$$('.mj-tab',mjTabs).find(x=>x.dataset.tab===k);
+    if(b){b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false');}
+  });
+  hideTip();
+  const sc=$('#mjScroll');if(sc)sc.scrollTop=0;
+}
+LINKS.forEach(pair=>{
+  const a=SYNC[pair[0]],b=SYNC[pair[1]];
+  if(a&&b){a._link=pair[1];b._link=pair[0];}
+});
+applyDeps();updateChainLabels();
+
+/* ---------- 说明卡 ---------- */
+const insBody=$('#insBody'),unpinBtn=$('#unpin');
+let pinned=null;
+function insHTML(t){
+  let h='<div class="ins-title"><h2>'+t.t+'</h2></div>';
+  h+='<div class="ins-path">'+(t.path.length?t.path.map(x=>'<b>'+x+'</b>').join(' ▸ '):'顶层分区')+'</div>';
+  h+='<p class="ins-desc">'+t.d+'</p>';
+  if(t.p&&t.p.length){
+    h+='<div class="ins-sec"><h4>参数</h4><dl class="kv">';
+    t.p.forEach(kv=>{h+='<dt>'+kv[0]+'</dt><dd>'+kv[1]+'</dd>';});
+    h+='</dl></div>';
+  }
+  if(t.s&&t.s.length){
+    h+='<div class="ins-sec"><h4>用法</h4><ol class="steps">';
+    t.s.forEach(s=>{h+='<li>'+s+'</li>';});
+    h+='</ol></div>';
+  }
+  if(t.wheelInfo){h+='<div class="note ok" style="margin-top:12px"><b>悬停滚轮：</b>'+t.wheelInfo+'</div>';}
+  if(t.note){h+='<div class="note'+(t.noteType?' '+t.noteType:'')+'">'+t.note+'</div>';}
+  return h;
+}
+function showIns(id,pin){
+  const t=TIPS[id];if(!t)return;
+  insBody.innerHTML=insHTML(t);
+  if(pin){
+    pinned=id;unpinBtn.style.display='';
+    $$('.pinned',mjPanel).forEach(e=>e.classList.remove('pinned'));
+    const e=$('[data-tip="'+id+'"]',mjPanel);if(e)e.classList.add('pinned');
+  }
+}
+function emptyIns(){
+  pinned=null;unpinBtn.style.display='none';
+  $$('.pinned',mjPanel).forEach(e=>e.classList.remove('pinned'));
+  insBody.innerHTML=
+   '<div class="empty-ins">'+
+   '<p class="empty-hint">悬停控件查看说明，点击固定</p>'+
+   '<div class="ins-sec"><h4>滚轮字段</h4><div class="legend" id="quickLinks"></div></div>'+
+   '</div>';
+  const q=$('#quickLinks');
+  [['扭曲阈值数值框','扭曲阈值'],['角度','按角度选面'],['贴图大小','UV 贴图 256'],['棋盘格1大小','棋盘格1 256'],['棋盘格2大小','棋盘格2 ±8']].forEach(a=>{
+    const id=BY_TITLE[a[0]];if(!id)return;
+    const b=el('button','chip',a[1]);b.type='button';
+    b.addEventListener('click',()=>focusTip(id));
+    q.appendChild(b);
+  });
+}
+function focusTip(id){
+  const e=$('[data-tip="'+id+'"]',mjPanel);if(!e)return;
+  const page=e.closest('.mj-tabpage');
+  if(page)activateTab(page.dataset.tab);
+  let p=e.parentElement;
+  while(p&&p!==mjPanel){if(p.classList.contains('mj-fold')||p.classList.contains('mj-frame'))p.classList.add('open');p=p.parentElement;}
+  e.scrollIntoView({block:'center',behavior:'smooth'});
+  e.classList.add('mj-hit');setTimeout(()=>e.classList.remove('mj-hit'),1600);
+  showIns(id,true);
+}
+unpinBtn.addEventListener('click',()=>{emptyIns();});
+emptyIns();
+
+/* ---------- 悬停提示 ---------- */
+const tip=$('#tip');
+let follow=true,hoverId=null,curTipEl=null;
+const canHover=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+function tipHTML(t){
+  let h='<div class="th"><b>'+t.t+'</b></div>';
+  h+='<div class="td">'+t.d+'</div>';
+  if(t.p&&t.p.length){h+='<div class="tf">'+t.p.slice(0,4).map(kv=>'<span>'+kv[0]+' '+kv[1]+'</span>').join('')+'</div>';}
+  return h;
+}
+function placeTip(x,y){
+  const r=tip.getBoundingClientRect();
+  let L=x+16,Tp=y+18;
+  if(L+r.width>window.innerWidth-10)L=x-r.width-14;
+  if(L<10)L=10;
+  if(Tp+r.height>window.innerHeight-10)Tp=y-r.height-14;
+  if(Tp<10)Tp=10;
+  tip.style.left=L+'px';tip.style.top=Tp+'px';
+}
+function showTip(id,x,y){
+  const t=TIPS[id];if(!t)return;
+  tip.innerHTML=tipHTML(t);tip.classList.add('show');tip.setAttribute('aria-hidden','false');
+  placeTip(x,y);
+}
+function hideTip(){tip.classList.remove('show');tip.setAttribute('aria-hidden','true');hoverId=null;curTipEl=null;}
+document.addEventListener('pointerover',e=>{
+  const t=e.target.closest?e.target.closest('[data-tip]'):null;
+  if(!t||!mjPanel.contains(t))return;
+  if(t===curTipEl)return;
+  curTipEl=t;hoverId=t.dataset.tip;
+  if(!pinned)showIns(hoverId,false);
+  if(follow&&canHover)showTip(hoverId,e.clientX,e.clientY);
+});
+document.addEventListener('pointermove',e=>{
+  if(!hoverId||!follow||!canHover)return;
+  placeTip(e.clientX,e.clientY);
+});
+document.addEventListener('pointerout',e=>{
+  const t=e.target.closest?e.target.closest('[data-tip]'):null;
+  if(!t||t!==curTipEl)return;
+  const to=e.relatedTarget&&e.relatedTarget.closest?e.relatedTarget.closest('[data-tip]'):null;
+  if(to===t)return;
+  hideTip();
+});
+mjRoot.addEventListener('click',e=>{
+  const t=e.target.closest?e.target.closest('[data-tip]'):null;
+  if(!t)return;
+  showIns(t.dataset.tip,true);
+  if(!canHover)hideTip();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){hideTip();if(pinned)emptyIns();clearSearch();}
+});
+$('#tipMode').addEventListener('click',function(){
+  follow=!follow;this.classList.toggle('on',follow);
+  $('.lbl',this).textContent=follow?'跟随提示':'侧栏说明';
+  if(!follow)hideTip();
+  toast(follow?'说明跟随鼠标显示':'说明只显示在右侧卡片');
+});
+
+/* ---------- 搜索 ---------- */
+const searchInput=$('#search'),searchBox=$('#searchBox'),searchCount=$('#searchCount');
+function clearSearch(){
+  searchInput.value='';searchBox.classList.remove('has');searchCount.innerHTML='';
+  $$('[data-tip]',mjPanel).forEach(e=>e.classList.remove('mj-hit','mj-miss'));
+}
+function applySearch(){
+  const q=searchInput.value.trim().toLowerCase();
+  searchBox.classList.toggle('has',!!q);
+  const all=$$('[data-tip]',mjPanel);
+  if(!q){all.forEach(e=>e.classList.remove('mj-hit','mj-miss'));searchCount.innerHTML='';return;}
+  const hits=new Set();
+  all.forEach(e=>{const t=TIPS[e.dataset.tip];if(t&&t.hay.indexOf(q)>=0)hits.add(e);});
+  const keep=new Set();
+  hits.forEach(e=>{let p=e;while(p&&p!==mjPanel){keep.add(p);p=p.parentElement;}});
+  all.forEach(e=>{
+    const hit=hits.has(e);
+    e.classList.toggle('mj-hit',hit);
+    e.classList.toggle('mj-miss',!hit&&!keep.has(e)&&!e.classList.contains('mj-tab'));
+  });
+  hits.forEach(e=>{
+    let p=e.parentElement;
+    while(p&&p!==mjPanel){if(p.classList.contains('mj-fold')||p.classList.contains('mj-frame'))p.classList.add('open');p=p.parentElement;}
+  });
+  searchCount.innerHTML='找到 <b>'+hits.size+'</b> 项';
+  if(hits.size){
+    const first=hits.values().next().value;
+    const page=first.closest('.mj-tabpage'),tabBtn=first.closest('.mj-tab');
+    if(page)activateTab(page.dataset.tab);
+    else if(tabBtn)activateTab(tabBtn.dataset.tab);
+    first.scrollIntoView({block:'center',behavior:'smooth'});
+  }
+}
+let searchT=0;
+searchInput.addEventListener('input',()=>{clearTimeout(searchT);searchT=setTimeout(applySearch,140);});
+$('#searchClr').addEventListener('click',()=>{clearSearch();searchInput.focus();});
+
+/* ---------- 工具条 ---------- */
+$('#expandAll').addEventListener('click',()=>{
+  $$('.mj-frame,.mj-fold',mjRoot).forEach(e=>e.classList.add('open'));
+});
+$('#collapseAll').addEventListener('click',()=>{
+  $$('.mj-frame,.mj-fold',mjRoot).forEach(e=>e.classList.remove('open'));
+});
+$('#resetVals').addEventListener('click',()=>{
+  VALUES.forEach(v=>{
+    if(v.kind==='num'){v.el.value=fmt(v.def,v.st.prec);}
+    else if(v.kind==='range'){v.el.value=v.def;}
+    else if(v.kind==='check'){v.el.checked=v.def;}
+    else if(v.kind==='radio'){v.el.checked=v.def;}
+    else if(v.kind==='select'){v.el.selectedIndex=v.def;}
+  });
+  const rl=$('#uvRefLabel');if(rl){rl.textContent='(请先选中参考物体)';rl.classList.add('dim');rl.style.color='';}
+  curPlane='xy';$$('.mj-pad .pl').forEach(x=>{x.style.background=PLANES[x.dataset.plane][x.dataset.plane==='xy'?'on':'off'];});
+  applyDeps();updateChainLabels();
+  toast('已重置为默认值','ok');
+});
+let demoRunning=false;
+$('#wheelDemo').addEventListener('click',()=>{
+  if(demoRunning)return;
+  const id=BY_TITLE['扭曲阈值数值框'];const e=$('[data-tip="'+id+'"]',mjRoot);
+  if(!e)return;
+  demoRunning=true;focusTip(id);
+  const seq=[1,1,1,1,1,-1,-1,-1];let i=0;
+  const tick=()=>{
+    if(i>=seq.length){demoRunning=false;return;}
+    stepNum(e,seq[i++]);setTimeout(tick,260);
+  };
+  setTimeout(tick,500);
+});
+
+/* ---------- 标签页 ---------- */
+const pages={studio:$('#page-studio'),install:$('#page-install'),change:$('#page-change')};
+$$('.tab').forEach(b=>b.addEventListener('click',()=>{
+  $$('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  const nav=$('#nav'),nr=nav.getBoundingClientRect(),br=b.getBoundingClientRect();
+  if(br.right>nr.right)nav.scrollBy({left:br.right-nr.right+8,behavior:'smooth'});
+  else if(br.left<nr.left)nav.scrollBy({left:br.left-nr.left-8,behavior:'smooth'});
+  Object.keys(pages).forEach(k=>pages[k].classList.toggle('active',k===b.dataset.page));
+  window.scrollTo({top:0,behavior:'auto'});
+  requestAnimationFrame(observeReveals);
+  hideTip();
+}));
+
+/* ---------- 滚动效果 ---------- */
+const head=$('#head'),prog=$('#prog');
+function onScroll(){
+  const y=window.scrollY||0;
+  head.classList.toggle('scrolled',y>10);
+  const h=document.documentElement.scrollHeight-window.innerHeight;
+  prog.style.width=(h>0?(y/h*100):0)+'%';
+}
+window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+let io=null;
+function observeReveals(){
+  if(!('IntersectionObserver' in window)){$$('.reveal').forEach(e=>e.classList.add('in'));return;}
+  if(io)io.disconnect();
+  io=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});},{threshold:.12});
+  $$('.reveal').forEach(e=>{if(!e.classList.contains('in'))io.observe(e);});
+}
+observeReveals();
+
+/* ---------- 拖拽安装演示 ---------- */
+const chip=$('#fileChip'),target=$('#dropTarget'),hint=$('#dropHint'),result=$('#dropResult');
+const hintHTML=hint?hint.innerHTML:'';
+let dragging=false,sx=0,sy=0,dx=0,dy=0,installed=false;
+function chipReset(){
+  installed=false;
+  chip.style.transition='none';chip.style.transform='';chip.style.opacity='1';chip.style.visibility='visible';
+  chip.classList.remove('drag');target.classList.remove('hot');
+  result.classList.remove('show');hint.innerHTML=hintHTML;
+}
+function succeed(){
+  installed=true;
+  const cr=chip.getBoundingClientRect(),tr=target.getBoundingClientRect();
+  const cx=tr.left+tr.width/2-(cr.left+cr.width/2),cy=tr.top+tr.height/2-(cr.top+cr.height/2);
+  chip.style.transition='transform .3s ease,opacity .3s ease';
+  chip.style.transform='translate('+cx+'px,'+cy+'px) scale(.82)';chip.style.opacity='0';
+  setTimeout(()=>{chip.style.visibility='hidden';},320);
+  target.classList.remove('hot');
+  hint.innerHTML='<b>install.mel 已执行</b>安装器正在复制 pyd、解压 numpy、创建工具栏按钮…';
+  setTimeout(()=>{
+    result.classList.add('show');
+    hint.innerHTML='<b>安装完成</b>LINGJU 标签页已出现「零距建模」按钮<br>点「重播演示」可以再看一次';
+    toast('安装完成（模拟）：numpy 已离线解压，工具栏按钮已创建','ok');
+  },700);
+}
+function playDemo(){
+  chipReset();
+  const cr=chip.getBoundingClientRect(),tr=target.getBoundingClientRect();
+  const mx=tr.left+tr.width/2-(cr.left+cr.width/2),my=tr.top+tr.height/2-(cr.top+cr.height/2);
+  target.classList.add('hot');
+  const an=chip.animate([{transform:'translate(0,0)'},{transform:'translate('+mx+'px,'+my+'px)'}],
+    {duration:950,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});
+  an.onfinish=()=>{an.cancel();succeed();};
+}
+if(chip&&target){
+  chip.addEventListener('pointerdown',e=>{
+    if(installed)return;
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    dragging=true;dx=0;dy=0;sx=e.clientX;sy=e.clientY;
+    chip.style.transition='none';chip.classList.add('drag');
+    try{chip.setPointerCapture(e.pointerId);}catch(err){}
+    e.preventDefault();
+  });
+  chip.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    dx=e.clientX-sx;dy=e.clientY-sy;
+    chip.style.transform='translate('+dx+'px,'+dy+'px)';
+    const cr=chip.getBoundingClientRect(),tr=target.getBoundingClientRect();
+    const cx=cr.left+cr.width/2,cy=cr.top+cr.height/2;
+    target.classList.toggle('hot',cx>tr.left&&cx<tr.right&&cy>tr.top&&cy<tr.bottom);
+  });
+  const end=e=>{
+    if(!dragging)return;dragging=false;chip.classList.remove('drag');
+    const hot=target.classList.contains('hot');target.classList.remove('hot');
+    if(hot)succeed();
+    else{chip.style.transition='transform .28s cubic-bezier(.3,.8,.3,1)';chip.style.transform='';
+      setTimeout(()=>{chip.style.transition='none';},300);}
+  };
+  chip.addEventListener('pointerup',end);
+  chip.addEventListener('pointercancel',end);
+  chip.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();playDemo();}});
+  $('#dropReplay').addEventListener('click',playDemo);
+}
+</script>
+</body>
+</html>
