@@ -1,10 +1,25 @@
 ## 使用说明： 
 
-1. 将 Lingju_Modeling_Tools_v104.pyd  文件拷贝到   **...\Documents\maya\20xx\scripts**   (...是在你的文档所在的文件夹。例如：D:\Users\Lingju_admin\Documents\maya\20xx\scripts\)  文件夹下​如果使用的是中文版，则拷贝到 **...\Documents\maya\20xx\zh_CN\scripts**
-   
-2. 将  “零距数码maya常用建模工具.mel”  拖拽进maya即可打开，或将  “零距数码maya常用建模工具.mel”  用记事本打开将里面的内容中键拖拽到工具架。 
+1. 用 Maya 对应版本的 `mayapy.exe` 或系统 Python 运行 `python build_pyd.py`，生成 `dist/v179a1/<Maya版本>/lingju_tools/`（纯 pyd 包，保持包目录结构）。
+2. 把 `dist/v179a1/install.mel` 拖拽进 Maya 主窗口：安装器会自动把当前 Maya 版本的 `lingju_tools` 包复制到 **...\Documents\maya\20xx\scripts**（存在中文版目录时同时写入 **...\Documents\maya\20xx\zh_CN\scripts**），并在 `LINGJU` 工具架标签页建好启动按钮。缺少 numpy 时自动从安装包里的 wheel 解压安装。
+3. 之后点 `LINGJU` 工具架上的按钮即可打开工具。
+
+源码直接使用（不编译 pyd）：把工程根目录加入 `sys.path` 后执行
+
+```python
+import lingju_tools
+lingju_tools.show_ui()
+```
 
 >[!NOTE]
+>### v179a1 重构版：
+>
+>- 单文件拆分为 `lingju_tools` 包：`core/`（消息、Qt 兼容、Maya 通用工具）、`features/`（建模、UV、Maya2Marmoset）、`ui/`（主窗口与选项卡组件）
+>
+>- `build_pyd.py` 批量编译 Maya 2022–2026 整包 pyd，并生成拖拽安装包
+>
+>- 发布形态只含 pyd，不含源码
+>
 >### v106 功能更新：
 >
 >- 增加吸附到平面工具

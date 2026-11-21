@@ -11,3 +11,8 @@ SGCG_Placement_Tool_v1.1.0/
 checker.py
 pyd/
 *.pdf
+
+# pyd 构建产物与缓存
+dist/
+numpy_wheels/
+.pyd_build/
