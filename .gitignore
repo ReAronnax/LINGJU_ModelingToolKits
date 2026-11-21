@@ -1,0 +1,7 @@
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 历史版本归档（不纳入版本控制，git 历史只保留最新版）
+archive/
