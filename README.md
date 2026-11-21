@@ -1,7 +1,7 @@
 ## 使用说明： 
 
-1. 用 Maya 对应版本的 `mayapy.exe` 或系统 Python 运行 `python build_pyd.py`，生成 `dist/v179a1/<Maya版本>/lingju_tools/`（纯 pyd 包，保持包目录结构）。
-2. 把 `dist/v179a1/install.mel` 拖拽进 Maya 主窗口：安装器会自动把当前 Maya 版本的 `lingju_tools` 包复制到 **...\Documents\maya\20xx\scripts**（存在中文版目录时同时写入 **...\Documents\maya\20xx\zh_CN\scripts**），并在 `LINGJU` 工具架标签页建好启动按钮。缺少 numpy 时自动从安装包里的 wheel 解压安装。
+1. 用 Maya 对应版本的 `mayapy.exe` 或系统 Python 运行 `python build_pyd.py`，生成 `dist/v1.8/<Maya版本>/lingju_tools/`（纯 pyd 包，保持包目录结构）。
+2. 把 `dist/v1.8/install.mel` 拖拽进 Maya 视口：安装器会自动把当前 Maya 版本的 `lingju_tools` 包复制到 **...\Documents\maya\20xx\scripts**（存在中文版目录时同时写入 **...\Documents\maya\20xx\zh_CN\scripts**），并在 `LINGJU` 工具架标签页建好启动按钮。缺少 numpy 时自动从安装包里的 wheel 解压安装。如果 Maya 无法获知 MEL 自身路径，会弹出一次文件夹选择框，选中 `dist/v1.8` 目录即可。
 3. 之后点 `LINGJU` 工具架上的按钮即可打开工具。
 
 源码直接使用（不编译 pyd）：把工程根目录加入 `sys.path` 后执行
@@ -12,7 +12,7 @@ lingju_tools.show_ui()
 ```
 
 >[!NOTE]
->### v179a1 重构版：
+>### v1.8 重构版：
 >
 >- 单文件拆分为 `lingju_tools` 包：`core/`（消息、Qt 兼容、Maya 通用工具）、`features/`（建模、UV、Maya2Marmoset）、`ui/`（主窗口与选项卡组件）
 >

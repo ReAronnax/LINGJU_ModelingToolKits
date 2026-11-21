@@ -4,7 +4,7 @@
 版本号只在这里维护，不再写进文件名；发布产物按 Maya 版本目录区分。
 """
 
-__version__ = "1.79a1"
+__version__ = "1.8"
 
 __all__ = ["show_ui", "show_m2m", "__version__"]
 

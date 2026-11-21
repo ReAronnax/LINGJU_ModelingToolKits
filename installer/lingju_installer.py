@@ -245,6 +245,7 @@ def install(root):
         _notice(u'不支持的 Maya 版本', [
             u'当前 Maya 版本：{}'.format(version),
             u'本工具包已编译的版本：{}'.format(u'、'.join(supported) or u'无'),
+            u'安装包目录：{}'.format(_shown(root)),
             u'',
             u'未复制任何文件，也没有创建工具栏按钮。',
             u'请改用上面版本的 Maya 拖入 install.mel，'
