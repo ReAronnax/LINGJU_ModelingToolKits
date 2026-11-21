@@ -52,8 +52,6 @@ _BF_SCRIPT_JOB = None
 _BF_APPLYING = False
 _BF_ATTACH_PENDING = None
 
-import traceback as _bf_traceback
-
 
 def _bf_message(text):
     """信息级提示：统一走视口提示出口"""
