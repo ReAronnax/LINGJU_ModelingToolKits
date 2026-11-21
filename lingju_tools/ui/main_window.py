@@ -83,6 +83,7 @@ from ..features.uv.uv_checker import (
     uv_checker_create_shader,
     uv_checker_cycle_shader,
 )
+from . import components, theme
 from .widgets import _DraggableTabWidget
 
 class LingJuGeometryTools:
@@ -104,9 +105,10 @@ class LingJuGeometryTools:
         self.FILL_SELECTION = Fill_Selection()
         self.SNAP_2_PLANE = Snap_2_Plane()
 
-        self.grey_blue = (0.198, 0.218, 0.238)
-        self.grey = (0.31, 0.32, 0.35)
-        self.inner_grey = (0.258, 0.278, 0.298)
+        # 配色统一取 ui.theme，改风格只改主题文件
+        self.grey_blue = theme.GREY_BLUE
+        self.grey = theme.GREY
+        self.inner_grey = theme.INNER_GREY
         self.yellow_hex = 0xCC7F00
         self.inner_margins4 = (12, 2, 2, 2)
 
@@ -252,6 +254,8 @@ class LingJuGeometryTools:
         # --- 5. Qt 层：获取 workspaceControl 句柄 ---
         ctrl_ptr = omui.MQtUtil.findControl(LingJuGeometryTools.LJGT_WINDOW_NAME)
         ctrl_widget = wrapInstance(int(ctrl_ptr), QtWidgets.QWidget)
+        # 统一 Qt 侧外观（选项卡 / 滚动条 / 提示框）
+        theme.apply_theme(ctrl_widget)
 
         # --- 6. 创建 DraggableTabWidget ---
         self._tab_widget = _DraggableTabWidget(ctrl_widget)
@@ -301,10 +305,7 @@ class LingJuGeometryTools:
 
     def _build_tab_content_modeling(self, bg_color):
         """建模选项卡：scrollLayout + columnLayout + 各子折叠栏 + 建模按钮区。"""
-        cmds.scrollLayout(childResizable=True,
-                          horizontalScrollBarThickness=0,
-                          verticalScrollBarThickness=13)
-        cmds.columnLayout(rowSpacing=2, adjustableColumn=True)
+        components.scroll_page(row_spacing=2)
 
         self.create_pivots_settings_layout()
         self.create_ring_split_layout()
@@ -324,10 +325,7 @@ class LingJuGeometryTools:
 
     def _build_tab_content_selection(self, bg_color):
         """选择选项卡：scrollLayout + columnLayout + 按角度选面 / 相似选择 / 选择按钮。"""
-        cmds.scrollLayout(childResizable=True,
-                          horizontalScrollBarThickness=0,
-                          verticalScrollBarThickness=13)
-        cmds.columnLayout(adjustableColumn=True)
+        components.scroll_page()
 
         self.create_select_by_angle_layout()
         self.create_select_similar_layout()
@@ -340,10 +338,7 @@ class LingJuGeometryTools:
 
     def _build_tab_content_naming(self, bg_color):
         """命名选项卡：scrollLayout + columnLayout + 命名按钮区。"""
-        cmds.scrollLayout(childResizable=True,
-                          horizontalScrollBarThickness=0,
-                          verticalScrollBarThickness=13)
-        cmds.columnLayout(adjustableColumn=True)
+        components.scroll_page()
 
         self.create_naming_buttons()
 
@@ -352,10 +347,7 @@ class LingJuGeometryTools:
 
     def _build_tab_content_uv(self, bg_color):
         """UV 选项卡：scrollLayout + UV检查 + 传递UV + 打直UV 按钮。"""
-        cmds.scrollLayout(childResizable=True,
-                          horizontalScrollBarThickness=0,
-                          verticalScrollBarThickness=13)
-        cmds.columnLayout(adjustableColumn=True, rowSpacing=4)
+        components.scroll_page(row_spacing=4)
 
         self.create_UV_checker_frame()
         self.create_UV_transfer_frame()
@@ -363,7 +355,7 @@ class LingJuGeometryTools:
         cmds.text(label=" ", height=5)
 
         # 打直UV：Rectangulate 独立按钮
-        cmds.button(label=u"打直UV",
+        components.button(label=u"打直UV",
                     command=lambda *_: self.uv_rectangulate(),
                     width=310, height=28, bgc=self.grey,
                     annotation=u"把当前选中的 UV shell 尽可能拉直成矩形")
@@ -376,10 +368,7 @@ class LingJuGeometryTools:
 
     def _build_tab_content_bake(self, bg_color):
         """烘焙选项卡：scrollLayout + columnLayout + Maya2Marmoset 按钮。"""
-        cmds.scrollLayout(childResizable=True,
-                          horizontalScrollBarThickness=0,
-                          verticalScrollBarThickness=13)
-        cmds.columnLayout(adjustableColumn=True)
+        components.scroll_page()
 
         self.create_bake_buttons()
 
@@ -395,7 +384,7 @@ class LingJuGeometryTools:
         完全调用 PolyravenUV 的 mel proc（prUV_TransferUV / prUV_GetSelected），
         不转译逻辑，仅提供 Python 侧的 UI 和状态保持。
         """
-        frame = cmds.frameLayout(label=u"传递UV", width=299,
+        frame = components.section(label=u"传递UV", width=299,
                                  bgc=self.grey_blue, collapsable=True, collapse=False,
                                  marginWidth=10, marginHeight=5)
         # 行距与快速底面一致：默认间距，不额外加 rowSpacing
@@ -406,25 +395,25 @@ class LingJuGeometryTools:
         self._uv_transfer_ref_label = _ui_short_name(cmds.text(label=label_text, align="center"))
 
         cmds.rowLayout(numberOfColumns=1)
-        cmds.button(label=u"设为参考物体",
+        components.button(label=u"设为参考物体",
                     command=lambda *_: self.uv_transfer_set_reference(),
                     width=275, height=28, bgc=self.inner_grey)
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"传递UV (ID)",
+        components.button(label=u"传递UV (ID)",
                     command=lambda *_: self.uv_transfer(4),
                     width=136, height=28, bgc=self.inner_grey)
-        cmds.button(label=u"传递UV (拓扑)",
+        components.button(label=u"传递UV (拓扑)",
                     command=lambda *_: self.uv_transfer(5),
                     width=136, height=28, bgc=self.inner_grey)
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"投影UV",
+        components.button(label=u"投影UV",
                     command=lambda *_: self.uv_transfer(0),
                     width=136, height=28, bgc=self.inner_grey)
-        cmds.button(label=u"传递形状",
+        components.button(label=u"传递形状",
                     command=lambda *_: self.uv_transfer(-1),
                     width=136, height=28, bgc=self.inner_grey)
         cmds.setParent('..')
@@ -498,7 +487,7 @@ class LingJuGeometryTools:
 
     def create_bake_buttons(self):
         cmds.rowLayout(numberOfColumns=1)
-        cmds.button(label=u"Maya2Marmoset", command=self.show_maya2marmoset,
+        components.button(label=u"Maya2Marmoset", command=self.show_maya2marmoset,
                     width=300, height=28, bgc=self.grey,
                     annotation=u"打开 Maya2Marmoset 桥接面板：自动分组、导出 FBX 并推送给 Toolbag")
         cmds.setParent('..')
@@ -537,7 +526,7 @@ class LingJuGeometryTools:
 
     def create_UV_checker_frame(self):
         """UV 检查材质：内嵌在 UV 布局里，不弹窗。"""
-        cmds.frameLayout(label=u"UV检查材质", width=299,
+        components.section(label=u"UV检查材质", width=299,
                          bgc=self.grey_blue, collapsable=True, collapse=True,
                          marginWidth=10, marginHeight=5,
                          expandCommand=self._wheel_attach_all)
@@ -547,23 +536,23 @@ class LingJuGeometryTools:
                              columnWidth=[(1, 96), (2, 80)],
                              columnAttach=[(1, "both", 2), (2, "both", 2)])
         cmds.text(label="贴图大小:", align="right")
-        res_field = cmds.intField(UV_CHECKER_UI_RES, value=_UV_CHECKER_SETTINGS["resolution"],
+        res_field = components.int_field(UV_CHECKER_UI_RES, value=_UV_CHECKER_SETTINGS["resolution"],
                                   minValue=0, maxValue=8192, step=256)
         self._wheel_register(res_field, integer=True, step=256, low=0, high=8192)
         cmds.text(label="棋盘格1大小", align="right")
-        checker1_field = cmds.intField(UV_CHECKER_UI_CHK1, value=_UV_CHECKER_SETTINGS["checker1"],
+        checker1_field = components.int_field(UV_CHECKER_UI_CHK1, value=_UV_CHECKER_SETTINGS["checker1"],
                                        minValue=0, maxValue=1024, step=256)
         self._wheel_register(checker1_field, integer=True, step=256, low=0, high=1024)
         cmds.text(label="棋盘格2大小", align="right")
-        checker2_field = cmds.intField(UV_CHECKER_UI_CHK2, value=_UV_CHECKER_SETTINGS["checker2"],
+        checker2_field = components.int_field(UV_CHECKER_UI_CHK2, value=_UV_CHECKER_SETTINGS["checker2"],
                                        minValue=4, step=8)
         self._wheel_register(checker2_field, integer=True, step=8, low=4)
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label="创建/更新", width=136, height=28, bgc=self.inner_grey,
+        components.button(label="创建/更新", width=136, height=28, bgc=self.inner_grey,
                     command=lambda *_: self.uv_checker_apply())
-        cmds.button(label="循环指定材质", width=136, height=28, bgc=self.inner_grey,
+        components.button(label="循环指定材质", width=136, height=28, bgc=self.inner_grey,
                     command=lambda *_: uv_checker_cycle_shader())
         cmds.setParent('..')
 
@@ -573,16 +562,16 @@ class LingJuGeometryTools:
     def uv_checker_apply(self):
         """读取输入框并创建/更新 UV 检查材质。"""
         _UV_CHECKER_SETTINGS.update(
-            resolution=cmds.intField(UV_CHECKER_UI_RES, query=True, value=True),
-            checker1=cmds.intField(UV_CHECKER_UI_CHK1, query=True, value=True),
-            checker2=cmds.intField(UV_CHECKER_UI_CHK2, query=True, value=True))
+            resolution=components.int_field(UV_CHECKER_UI_RES, query=True, value=True),
+            checker1=components.int_field(UV_CHECKER_UI_CHK1, query=True, value=True),
+            checker2=components.int_field(UV_CHECKER_UI_CHK2, query=True, value=True))
         uv_checker_create_shader(_UV_CHECKER_SETTINGS["resolution"],
                                  _UV_CHECKER_SETTINGS["checker1"],
                                  _UV_CHECKER_SETTINGS["checker2"])
 
     def open_modeling_fold(self, label):
         """建模区折叠栏统一规格：同宽、同内边距、默认收起；栏间距由父列 rowSpacing 统一给"""
-        frame = cmds.frameLayout(label=label, width=299,
+        frame = components.section(label=label, width=299,
                                  bgc=self.grey_blue, collapsable=True, collapse=True,
                                  marginWidth=10, marginHeight=5)
         cmds.columnLayout()
@@ -602,13 +591,13 @@ class LingJuGeometryTools:
                        columnAttach3=("left", "left", "left"),
                        columnWidth3=(52, 172, 50), columnOffset3=(0, 2, 2))
         cmds.text(label=u"扭曲阈值", align="left", width=48, height=18)
-        self._twist_threshold_slider = _ui_short_name(cmds.floatSlider(
+        self._twist_threshold_slider = _ui_short_name(components.slider(
             minValue=TWIST_MIN_THRESHOLD, maxValue=TWIST_MAX_THRESHOLD,
             step=1, value=self._twist_load_threshold(), width=172,
             changeCommand=self._twist_slider_changed,
             dragCommand=self._twist_slider_changed,
             annotation=u"四边面两个三角化三角形法线的夹角阈值（度）"))
-        self._twist_threshold_field = _ui_short_name(cmds.floatField(
+        self._twist_threshold_field = _ui_short_name(components.float_field(
             minValue=TWIST_MIN_THRESHOLD, maxValue=TWIST_MAX_THRESHOLD,
             step=1, value=self._twist_load_threshold(), precision=1,
             width=50, changeCommand=self._twist_field_changed))
@@ -620,19 +609,19 @@ class LingJuGeometryTools:
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"检查并选择", command=lambda *args: self.twist_check_clicked(),
+        components.button(label=u"检查并选择", command=lambda *args: self.twist_check_clicked(),
                     width=136, height=28, bgc=self.inner_grey,
                     annotation=u"只检查四边面，选中法线夹角超过阈值的四边面。\n"
                                u"有选择时只检查当前选择；无选择时扫描全场景。\n"
                                u"结果在视口提示中显示。")
-        cmds.button(label=u"三角化", command=lambda *args: self.twist_triangulate_clicked(),
+        components.button(label=u"三角化", command=lambda *args: self.twist_triangulate_clicked(),
                     width=136, height=28, bgc=self.inner_grey,
                     annotation=u"对当前选择执行 Maya 原生 polyTriangulate。\n"
                                u"通常先检查并选中扭曲四边面，再点击本按钮。")
         cmds.setParent('..')
 
         cmds.columnLayout()
-        cmds.button(label=u"Spin 连线", command=lambda *args: self.twist_spin_clicked(),
+        components.button(label=u"Spin 连线", command=lambda *args: self.twist_spin_clicked(),
                     width=275, height=28, bgc=self.inner_grey,
                     annotation=u"只对当前选中的边执行 polyFlipEdge。\n"
                                u"请先三角化，再选中内部连线；三角面、边界边、非流形边自动忽略。")
@@ -658,7 +647,7 @@ class LingJuGeometryTools:
 
     def _twist_field_wheel_changed(self):
         """滚轮已经改过输入框，这里把滑条与 optionVar 同步过去。"""
-        value = cmds.floatField(self._twist_threshold_field, query=True, value=True)
+        value = components.float_field(self._twist_threshold_field, query=True, value=True)
         self._twist_set_threshold(value, from_slider=False)
 
     def _twist_set_threshold(self, value, from_slider=True):
@@ -666,9 +655,9 @@ class LingJuGeometryTools:
         try:
             value = max(TWIST_MIN_THRESHOLD, min(TWIST_MAX_THRESHOLD, float(value)))
             if from_slider:
-                cmds.floatField(self._twist_threshold_field, edit=True, value=value)
+                components.float_field(self._twist_threshold_field, edit=True, value=value)
             else:
-                cmds.floatSlider(self._twist_threshold_slider, edit=True, value=value)
+                components.slider(self._twist_threshold_slider, edit=True, value=value)
             cmds.optionVar(fv=(TWIST_THRESHOLD_OPTION, value))
         except Exception:
             pass
@@ -676,7 +665,7 @@ class LingJuGeometryTools:
     def _twist_save_threshold(self):
         """把滑条当前值存回 optionVar"""
         try:
-            value = cmds.floatSlider(self._twist_threshold_slider, query=True, value=True)
+            value = components.slider(self._twist_threshold_slider, query=True, value=True)
             cmds.optionVar(fv=(TWIST_THRESHOLD_OPTION, float(value)))
         except Exception:
             pass
@@ -691,7 +680,7 @@ class LingJuGeometryTools:
         if self._twist_numpy_missing():
             return
         self._twist_save_threshold()
-        threshold = cmds.floatSlider(self._twist_threshold_slider, query=True, value=True)
+        threshold = components.slider(self._twist_threshold_slider, query=True, value=True)
         try:
             result = twist_check_and_select(threshold)
             text = _twist_format_check_result(result, threshold)
@@ -731,25 +720,25 @@ class LingJuGeometryTools:
         self.open_modeling_fold(u"快速底面")
 
         cmds.columnLayout()
-        cmds.optionMenu(BF_MODE_MENU, label=u"候选模式：", width=280)
+        components.option_menu(BF_MODE_MENU, label=u"候选模式：", width=280)
         cmds.menuItem(label=u"凸包(高模)")
         cmds.menuItem(label=u"六面安全(包围盒)")
-        cmds.optionMenu(BF_MODE_MENU, e=True, select=1)
+        components.option_menu(BF_MODE_MENU, e=True, select=1)
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"生成候选底面", command=lambda *args: self.bf_place_clicked(),
+        components.button(label=u"生成候选底面", command=lambda *args: self.bf_place_clicked(),
                     width=136, height=28, bgc=self.inner_grey,
                     annotation=u"选中一个网格物体后点击，会在模型各侧面生成绿色候选面。\n"
                                u"再点任意一个绿色面片，模型就把那一面朝下、贴地并冻结变换。\n"
                                u"凸包(高模)适合非盒子状的高模；六面安全只用包围盒，永远有结果。")
-        cmds.button(label=u"清除候选", command=lambda *args: self.bf_clear_clicked(),
+        components.button(label=u"清除候选", command=lambda *args: self.bf_clear_clicked(),
                     width=136, height=28, bgc=self.inner_grey,
                     annotation=u"删除场景里的绿色候选面，并停止点选放置的监听。")
         cmds.setParent('..')
 
         cmds.columnLayout()
-        cmds.button(label=u"对齐两个候选面", command=lambda *args: self.bf_attach_clicked(),
+        components.button(label=u"对齐两个候选面", command=lambda *args: self.bf_attach_clicked(),
                     width=275, height=28, bgc=self.inner_grey,
                     annotation=u"先选目标物体，再选要移动的物体，然后点击本按钮。\n"
                                u"两个物体会各生成一组绿色候选面：\n"
@@ -792,7 +781,7 @@ class LingJuGeometryTools:
         fold = self.open_modeling_fold(u"边重建")
         cmds.frameLayout(fold, edit=True, expandCommand=self._wheel_attach_all)
 
-        self._rm_preview_cb = _ui_short_name(cmds.checkBox(
+        self._rm_preview_cb = _ui_short_name(components.check_box(
             label=u"实时预览", value=False, align="left", width=255,
             changeCommand=self._rm_preview_toggled,
             annotation=u"勾选后先缓存当前网格的原始点位：修改参数时先还原再重新计算。\n"
@@ -811,7 +800,7 @@ class LingJuGeometryTools:
 
     def _rm_open_fold(self, label):
         """边重建的子折叠栏：比外层窄一圈，配色与建模区其它折叠栏一致。"""
-        frame = cmds.frameLayout(label=label, width=277,
+        frame = components.section(label=label, width=277,
                                  bgc=self.grey, collapsable=True, collapse=True,
                                  marginWidth=8, marginHeight=4,
                                  expandCommand=self._wheel_attach_all)
@@ -950,10 +939,10 @@ class LingJuGeometryTools:
         cmds.control(control, edit=True, enable=enabled)
 
     def _rm_check(self, control):
-        return bool(cmds.checkBox(control, query=True, value=True))
+        return bool(components.check_box(control, query=True, value=True))
 
     def _rm_spline_value(self):
-        return cmds.optionMenu(self._rm_spline, query=True, value=True)
+        return components.option_menu(self._rm_spline, query=True, value=True)
 
     def _rm_numpy_missing(self):
         if np is None:
@@ -966,11 +955,11 @@ class LingJuGeometryTools:
 
         self._rm_open_fields()
         cmds.text(label=u"采样类型", align="right")
-        self._rm_spline = _ui_short_name(cmds.optionMenu(
+        self._rm_spline = _ui_short_name(components.option_menu(
             width=158, changeCommand=lambda *_: self._rm_preview_apply("resample")))
         for name in SPLINE_TYPES:
             cmds.menuItem(label=name)
-        cmds.optionMenu(self._rm_spline, edit=True, select=1)
+        components.option_menu(self._rm_spline, edit=True, select=1)
 
         cmds.text(label=u"增减点数", align="right")
         self._rm_step = self._rm_number_field(
@@ -984,15 +973,15 @@ class LingJuGeometryTools:
             annotation=u"POLYNOMIAL 的弦长指数（原版 Ctrl+滚轮）")
         cmds.setParent('..')
 
-        self._rm_space = _ui_short_name(cmds.checkBox(
+        self._rm_space = _ui_short_name(components.check_box(
             label=u"按弧长均匀分布", value=False, align="left", width=255,
             changeCommand=lambda *_: self._rm_preview_apply("resample"),
             annotation=u"按弧长重新分布采样点（原版 T 键）"))
-        self._rm_auto_clean = _ui_short_name(cmds.checkBox(
+        self._rm_auto_clean = _ui_short_name(components.check_box(
             label=u"自动清理共线边", value=False, align="left", width=255,
             annotation=u"重连后溶解共面的新边（原版 Shift+C）"))
 
-        self._rm_two_chain = _ui_short_name(cmds.checkBox(
+        self._rm_two_chain = _ui_short_name(components.check_box(
             label=u"双链分别设点数", value=False, align="left", width=255,
             changeCommand=self._rm_two_chain_toggled,
             annotation=u"正好选中两条开放边链时，分别指定各自的目标点数。\n"
@@ -1013,21 +1002,21 @@ class LingJuGeometryTools:
         self._rm_chain_b_label = _ui_short_name(cmds.text(label=u"链 2：未启用", align="left", width=255))
 
         cmds.rowLayout(numberOfColumns=2)
-        self._rm_read_two = _ui_short_name(cmds.button(
+        self._rm_read_two = _ui_short_name(components.button(
             label=u"读取两链", command=lambda *args: self._rm_read_two_clicked(),
             width=126, height=26, bgc=self.inner_grey,
             annotation=u"读取当前选中的两条开放边链，并填入各自现有点数"))
-        self._rm_equal_two = _ui_short_name(cmds.button(
+        self._rm_equal_two = _ui_short_name(components.button(
             label=u"两链同点数", command=lambda *args: self._rm_equalize_counts(),
             width=126, height=26, bgc=self.inner_grey,
             annotation=u"把链 2 的目标点数设为与链 1 相同"))
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"重采样", command=lambda *args: self._rm_run("resample"),
+        components.button(label=u"重采样", command=lambda *args: self._rm_run("resample"),
                     width=126, height=28, bgc=self.inner_grey,
                     annotation=u"按当前样条与点数重采样选中的开放边链")
-        cmds.button(label=u"均匀分布", command=lambda *args: self._rm_run("distribute"),
+        components.button(label=u"均匀分布", command=lambda *args: self._rm_run("distribute"),
                     width=126, height=28, bgc=self.inner_grey,
                     annotation=u"Akima + 弧长均匀分布，只改点位不动拓扑（原版 D 键）")
         cmds.setParent('..')
@@ -1048,20 +1037,20 @@ class LingJuGeometryTools:
             False, 0.05, lambda: self._rm_preview_apply("smooth"),
             minValue=0.001, maxValue=1.0, value=0.5, precision=3)
         cmds.text(label=u"权重", align="right")
-        self._rm_smooth_weight = _ui_short_name(cmds.optionMenu(
+        self._rm_smooth_weight = _ui_short_name(components.option_menu(
             width=158, changeCommand=lambda *_: self._rm_preview_apply("smooth")))
         cmds.menuItem(label="distance")
         cmds.menuItem(label="uniform")
-        cmds.optionMenu(self._rm_smooth_weight, edit=True, select=1)
+        components.option_menu(self._rm_smooth_weight, edit=True, select=1)
         cmds.text(label=u"类型", align="right")
-        self._rm_smooth_type = _ui_short_name(cmds.optionMenu(
+        self._rm_smooth_type = _ui_short_name(components.option_menu(
             width=158, changeCommand=lambda *_: self._rm_preview_apply("smooth")))
         cmds.menuItem(label="SMOOTH")
         cmds.menuItem(label="SHARP")
-        cmds.optionMenu(self._rm_smooth_type, edit=True, select=1)
+        components.option_menu(self._rm_smooth_type, edit=True, select=1)
         cmds.setParent('..')
 
-        cmds.button(label=u"平滑", command=lambda *args: self._rm_run("smooth"),
+        components.button(label=u"平滑", command=lambda *args: self._rm_run("smooth"),
                     width=255, height=28, bgc=self.inner_grey,
                     annotation=u"SMOOTH = Laplacian 平滑，SHARP = Taubin 先平滑再反向锐化")
         self._rm_close_fold(frame)
@@ -1076,11 +1065,11 @@ class LingJuGeometryTools:
             minValue=0.1, maxValue=359.9, value=90.0, precision=2)
         cmds.setParent('..')
 
-        self._rm_arc_flip = _ui_short_name(cmds.checkBox(
+        self._rm_arc_flip = _ui_short_name(components.check_box(
             label=u"反向", value=False, align="left", width=255,
             changeCommand=lambda *_: self._rm_preview_apply("circularize")))
 
-        cmds.button(label=u"圆化", command=lambda *args: self._rm_run("circularize"),
+        components.button(label=u"圆化", command=lambda *args: self._rm_run("circularize"),
                     width=255, height=28, bgc=self.inner_grey,
                     annotation=u"把选中的开放边链拟合成圆弧，链的两个端点保持不动")
         self._rm_close_fold(frame)
@@ -1098,19 +1087,19 @@ class LingJuGeometryTools:
             False, 0.01, lambda: self._rm_preview_apply("unknot"),
             minValue=-1.0, maxValue=1.0, value=0.5, precision=3)
         cmds.text(label=u"采样类型", align="right")
-        self._rm_unknot_spline = _ui_short_name(cmds.optionMenu(
+        self._rm_unknot_spline = _ui_short_name(components.option_menu(
             width=158, changeCommand=lambda *_: self._rm_preview_apply("unknot")))
         for name in SPLINE_TYPES:
             cmds.menuItem(label=name)
-        cmds.optionMenu(self._rm_unknot_spline, edit=True, select=1)
+        components.option_menu(self._rm_unknot_spline, edit=True, select=1)
         cmds.setParent('..')
 
-        self._rm_unknot_uniform = _ui_short_name(cmds.checkBox(
+        self._rm_unknot_uniform = _ui_short_name(components.check_box(
             label=u"均匀", value=True, align="left", width=255,
             changeCommand=lambda *_: self._rm_preview_apply("unknot"),
             annotation=u"按弧长均匀分布内部点"))
 
-        cmds.button(label=u"解结", command=lambda *args: self._rm_run("unknot"),
+        components.button(label=u"解结", command=lambda *args: self._rm_run("unknot"),
                     width=255, height=28, bgc=self.inner_grey,
                     annotation=u"用两端切线引导中间点，缓解打结和扭曲")
         self._rm_close_fold(frame)
@@ -1120,23 +1109,23 @@ class LingJuGeometryTools:
 
         self._rm_open_fields()
         cmds.text(label=u"匹配模式", align="right")
-        self._rm_bridge_mode = _ui_short_name(cmds.optionMenu(width=158))
+        self._rm_bridge_mode = _ui_short_name(components.option_menu(width=158))
         cmds.menuItem(label="shortest")
         cmds.menuItem(label="basic")
-        cmds.optionMenu(self._rm_bridge_mode, edit=True, select=1)
+        components.option_menu(self._rm_bridge_mode, edit=True, select=1)
         cmds.text(label=u"扭转", align="right")
         self._rm_bridge_twist = self._rm_number_field(
             True, 1, None, minValue=-1000, maxValue=1000, value=0)
         cmds.setParent('..')
 
-        self._rm_bridge_connect = _ui_short_name(cmds.checkBox(
+        self._rm_bridge_connect = _ui_short_name(components.check_box(
             label=u"仅生成连接边", value=True, align="left", width=255,
             annotation=u"勾选：只生成连接边（原版 C 键）；\n"
                        u"取消：用 polyBridgeEdge 生成桥接面（要求边循环是开放边界）"))
-        self._rm_bridge_reverse = _ui_short_name(cmds.checkBox(
+        self._rm_bridge_reverse = _ui_short_name(components.check_box(
             label=u"反转", value=False, align="left", width=255))
 
-        cmds.button(label=u"桥接", command=lambda *args: self._rm_run("bridge"),
+        components.button(label=u"桥接", command=lambda *args: self._rm_run("bridge"),
                     width=255, height=28, bgc=self.inner_grey,
                     annotation=u"在两个或多个边循环之间桥接")
         self._rm_close_fold(frame)
@@ -1224,13 +1213,13 @@ class LingJuGeometryTools:
         if not preview and self._rm_check(self._rm_two_chain):
             if not self._rm_two_chain_valid_for_apply():
                 return
-            counts = [cmds.intField(self._rm_chain_a_count, query=True, value=True),
-                      cmds.intField(self._rm_chain_b_count, query=True, value=True)]
+            counts = [components.int_field(self._rm_chain_a_count, query=True, value=True),
+                      components.int_field(self._rm_chain_b_count, query=True, value=True)]
             chain_count = resample(
                 step=0,
                 spline_type=self._rm_spline_value(),
                 space=self._rm_check(self._rm_space),
-                p_tension=cmds.floatField(self._rm_p_tension, query=True, value=True),
+                p_tension=components.float_field(self._rm_p_tension, query=True, value=True),
                 auto_clean=self._rm_check(self._rm_auto_clean),
                 counts=counts)
             self._rm_sync_chain_counts(report=False)
@@ -1239,10 +1228,10 @@ class LingJuGeometryTools:
             self._rm_after_apply()
             return
         count = resample(
-            step=0 if preview else int(cmds.intField(self._rm_step, query=True, value=True)),
+            step=0 if preview else int(components.int_field(self._rm_step, query=True, value=True)),
             spline_type=self._rm_spline_value(),
             space=self._rm_check(self._rm_space),
-            p_tension=cmds.floatField(self._rm_p_tension, query=True, value=True),
+            p_tension=components.float_field(self._rm_p_tension, query=True, value=True),
             auto_clean=self._rm_check(self._rm_auto_clean),
             positions_only=preview)
         if not preview:
@@ -1257,17 +1246,17 @@ class LingJuGeometryTools:
 
     def _rm_smooth(self, preview=False):
         count = smooth(
-            iterations=int(cmds.intField(self._rm_smooth_iterations, query=True, value=True)),
-            factor=cmds.floatField(self._rm_smooth_factor, query=True, value=True),
-            weight_type=cmds.optionMenu(self._rm_smooth_weight, query=True, value=True),
-            smooth_type=cmds.optionMenu(self._rm_smooth_type, query=True, value=True))
+            iterations=int(components.int_field(self._rm_smooth_iterations, query=True, value=True)),
+            factor=components.float_field(self._rm_smooth_factor, query=True, value=True),
+            weight_type=components.option_menu(self._rm_smooth_weight, query=True, value=True),
+            smooth_type=components.option_menu(self._rm_smooth_type, query=True, value=True))
         if not preview:
             lj_info(u"已平滑 %d 个顶点。" % count)
             self._rm_after_apply()
 
     def _rm_circularize(self, preview=False):
         count = circularize(
-            angle=cmds.floatField(self._rm_arc_angle, query=True, value=True),
+            angle=components.float_field(self._rm_arc_angle, query=True, value=True),
             flip=self._rm_check(self._rm_arc_flip))
         if not preview:
             lj_info(u"已圆化 %d 个顶点。" % count)
@@ -1275,9 +1264,9 @@ class LingJuGeometryTools:
 
     def _rm_unknot(self, preview=False):
         count = unknot(
-            width=cmds.floatField(self._rm_unknot_width, query=True, value=True),
-            tension=cmds.floatField(self._rm_unknot_tension, query=True, value=True),
-            spline_type=cmds.optionMenu(self._rm_unknot_spline, query=True, value=True),
+            width=components.float_field(self._rm_unknot_width, query=True, value=True),
+            tension=components.float_field(self._rm_unknot_tension, query=True, value=True),
+            spline_type=components.option_menu(self._rm_unknot_spline, query=True, value=True),
             uniform=self._rm_check(self._rm_unknot_uniform))
         if not preview:
             lj_info(u"已解结 %d 个顶点。" % count)
@@ -1286,9 +1275,9 @@ class LingJuGeometryTools:
     def _rm_bridge(self, preview=False):
         count = bridge(
             connect=self._rm_check(self._rm_bridge_connect),
-            mode=cmds.optionMenu(self._rm_bridge_mode, query=True, value=True),
+            mode=components.option_menu(self._rm_bridge_mode, query=True, value=True),
             reverse=self._rm_check(self._rm_bridge_reverse),
-            twist=int(cmds.intField(self._rm_bridge_twist, query=True, value=True)))
+            twist=int(components.int_field(self._rm_bridge_twist, query=True, value=True)))
         lj_info(u"已桥接 %d 个循环。" % count)
 
     # -- 双链点数 --------------------------------------------------------
@@ -1333,7 +1322,7 @@ class LingJuGeometryTools:
         self._rm_two_chain_current = [item["count"] for item in info]
         self._rm_two_chain_info = info
         for control, item in zip((self._rm_chain_a_count, self._rm_chain_b_count), info):
-            cmds.intField(control, edit=True, value=item["count"])
+            components.int_field(control, edit=True, value=item["count"])
         self._rm_update_chain_labels()
         if report:
             lj_info(u"已读取两链：链 1 %d 点，链 2 %d 点。"
@@ -1349,7 +1338,7 @@ class LingJuGeometryTools:
                           label=u"链 %d：未读取（点「读取两链」）" % (index + 1))
                 continue
             current = self._rm_two_chain_current[index]
-            target = int(cmds.intField(field, query=True, value=True))
+            target = int(components.int_field(field, query=True, value=True))
             cmds.text(label, edit=True,
                       label=u"链 %d：当前 %d 点 / %d 段 → %d 点 / %d 段"
                             % (index + 1, current, max(0, current - 1),
@@ -1359,8 +1348,8 @@ class LingJuGeometryTools:
         self._rm_sync_chain_counts()
 
     def _rm_equalize_counts(self):
-        value = cmds.intField(self._rm_chain_a_count, query=True, value=True)
-        cmds.intField(self._rm_chain_b_count, edit=True, value=value)
+        value = components.int_field(self._rm_chain_a_count, query=True, value=True)
+        components.int_field(self._rm_chain_b_count, edit=True, value=value)
         self._rm_update_chain_labels()
 
     def _rm_two_chain_valid_for_apply(self):
@@ -1400,18 +1389,18 @@ class LingJuGeometryTools:
 
     def create_ring_split_buttons(self):
         cmds.columnLayout()
-        cmds.optionMenu(RING_UI_MODE, label=u"模式：", width=280)
+        components.option_menu(RING_UI_MODE, label=u"模式：", width=280)
         cmds.menuItem(label=u"仅处理选中单条边(单四边面对边)")
         cmds.menuItem(label=u"整条Ring分割(等同maya自带工具)")
-        cmds.optionMenu(RING_UI_MODE, e=True, select=1)
+        components.option_menu(RING_UI_MODE, e=True, select=1)
         cmds.setParent('..')
 
         cmds.columnLayout()
-        cmds.checkBox(RING_UI_EDGE_FLOW, label=u"Insert With EdgeFlow 开启边流", v=0)
+        components.check_box(RING_UI_EDGE_FLOW, label=u"Insert With EdgeFlow 开启边流", v=0)
         cmds.setParent('..')
 
         cmds.columnLayout()
-        cmds.button(label=u"执行分割", command=ring_batch_split,
+        components.button(label=u"执行分割", command=ring_batch_split,
                     width=275, height=28, bgc=self.inner_grey)
         cmds.setParent('..')
 
@@ -1427,7 +1416,7 @@ class LingJuGeometryTools:
         self.close_modeling_fold()
 
     def create_select_by_angle_layout(self):
-        cmds.frameLayout(label=u"按角度选面", width=299,
+        components.section(label=u"按角度选面", width=299,
                          bgc=self.grey_blue, collapsable=True, collapse=True,
                          marginWidth=0, marginHeight=5,
                          expandCommand=self._wheel_attach_all)
@@ -1439,7 +1428,7 @@ class LingJuGeometryTools:
         cmds.setParent('..')
 
     def create_select_similar_layout(self):
-        cmds.frameLayout(label=u"选择相似物体", width=299,
+        components.section(label=u"选择相似物体", width=299,
                          bgc=self.grey_blue, collapsable=True, collapse=True, marginWidth=10, marginHeight=5)
         cmds.columnLayout()
 
@@ -1454,7 +1443,7 @@ class LingJuGeometryTools:
 
     def create_select_similar_buttons(self):
         cmds.columnLayout()
-        cmds.button(label=u"选择相似物体", command=lambda *args: self.select_similar_mesh(mode=self.mode),
+        components.button(label=u"选择相似物体", command=lambda *args: self.select_similar_mesh(mode=self.mode),
                     width=275, height=25, bgc=self.inner_grey)
         cmds.setParent('..')
 
@@ -1488,7 +1477,7 @@ class LingJuGeometryTools:
             low=0, high=180,
             bump=lambda sign: self._angle_wheel_bump(angle_slider, sign))
 
-        cmds.button(label=u"选择",
+        components.button(label=u"选择",
                     bgc=self.inner_grey,
                     command=lambda *args: [self.update_initial_faces(), self.grow_selection_by_normal_angle(
                         cmds.intSliderGrp(angle_slider, q=True, value=True))])
@@ -1503,23 +1492,23 @@ class LingJuGeometryTools:
     def create_selection_buttons(self):
         cmds.columnLayout()
 
-        cmds.button(label=u"隔段选线", command=self.select_every_N_edge,
+        components.button(label=u"隔段选线", command=self.select_every_N_edge,
                     width=300, height=28, bgc=self.grey)
 
         cmds.text(label=" ", height=2)
 
-        cmds.button(label=u"选区选择", command=lambda *args: self.FILL_SELECTION.fill_selection(),
+        components.button(label=u"选区选择", command=lambda *args: self.FILL_SELECTION.fill_selection(),
                     width=300, height=28, bgc=self.grey,
                     annotation=u"用选中的线划分区域")
 
         cmds.text(label=" ", height=2)
 
-        cmds.button(label=u"选硬边", command=self.get_hard_edge,
+        components.button(label=u"选硬边", command=self.get_hard_edge,
                     width=300, height=28, bgc=self.grey)
 
         cmds.text(label=" ", height=2)
 
-        cmds.button(label=u"测试", command=self.test,
+        components.button(label=u"测试", command=self.test,
                     width=300, height=28, bgc=self.grey)
 
         cmds.setParent('..')
@@ -1527,7 +1516,7 @@ class LingJuGeometryTools:
     def create_naming_buttons(self):
         cmds.columnLayout()
 
-        cmds.button(label=u"自动命名", command=self.show_naming_window,
+        components.button(label=u"自动命名", command=self.show_naming_window,
                     width=300, height=28, bgc=self.grey)
 
         cmds.setParent('..')
@@ -1537,10 +1526,10 @@ class LingJuGeometryTools:
 
     def create_combine_separate_buttons(self):
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"智能合并", command=lambda *args: self.smart_clean_combine(weld=self.weld_vertices),
+        components.button(label=u"智能合并", command=lambda *args: self.smart_clean_combine(weld=self.weld_vertices),
                     width=136, height=30, bgc=self.inner_grey,
                     annotation=u"能自动合并近的片")
-        cmds.button(label=u"智能分离", command=lambda *args: self.smart_clean_separate(keepOriginal=self.keep_original),
+        components.button(label=u"智能分离", command=lambda *args: self.smart_clean_separate(keepOriginal=self.keep_original),
                     width=136, height=30, bgc=self.inner_grey,
                     annotation=u"选面：走 Maya 原生 Extract 分离；选物体：按壳分离")
         cmds.setParent('..')
@@ -1578,42 +1567,42 @@ class LingJuGeometryTools:
         cmds.columnLayout()
         cmds.rowLayout(numberOfColumns=2)
 
-        cmds.button(label=u"转角改线", command=self.corner_killer,
+        components.button(label=u"转角改线", command=self.corner_killer,
                     width=149, height=28, bgc=self.grey,
                     annotation=u"更改转角布线，上下面如果有需要一起选中")
 
-        cmds.button(label=u"选中元素加环线", command=lambda *args: self.split_around(),
+        components.button(label=u"选中元素加环线", command=lambda *args: self.split_around(),
                     width=149, height=28, bgc=self.grey,
                     annotation=u"选中点线面都可以以选中元素为中心加环线")
 
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"智能插入 I", command=lambda *args: self.ROUND_INSET.roundInset(),
+        components.button(label=u"智能插入 I", command=lambda *args: self.ROUND_INSET.roundInset(),
                     width=149, height=28, bgc=self.grey)
 
-        cmds.button(label=u"智能插入 II", command=lambda *args: self.insert_face(),
+        components.button(label=u"智能插入 II", command=lambda *args: self.insert_face(),
                     width=149, height=28, bgc=self.grey,
                     annotation=u"能单面片插入")
 
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"顶点法线对齐", command=lambda *args: self.match_vertex_normal(),
+        components.button(label=u"顶点法线对齐", command=lambda *args: self.match_vertex_normal(),
                     width=149, height=28, bgc=self.grey,
                     annotation=u"顶点法线对齐到选中的点法线方向")
 
-        cmds.button(label=u"吸附平面", command=lambda *args: self.SNAP_2_PLANE.create_plane_ui(),
+        components.button(label=u"吸附平面", command=lambda *args: self.SNAP_2_PLANE.create_plane_ui(),
                     width=149, height=28, bgc=self.grey,
                     annotation=u"吸附到自定义三点确定的平面")
 
         cmds.setParent('..')
 
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"环线随意滑移", command=lambda *args: self.polyEdgeShift(),
+        components.button(label=u"环线随意滑移", command=lambda *args: self.polyEdgeShift(),
             width=149, height=28, bgc=self.grey,
             annotation=u"增加的环线随意旋转滑移，不影响外轮廓")
-        cmds.button(label=u"法线权重置平", command=lambda *args: self.weight_normal(),
+        components.button(label=u"法线权重置平", command=lambda *args: self.weight_normal(),
             width=149, height=28, bgc=self.grey,
             annotation=u"法线权重（Smart Outside）：按容差角度把平滑法线推给外侧相邻面")
         
@@ -1621,13 +1610,13 @@ class LingJuGeometryTools:
 
         cmds.text(label=" ", height=10)
         cmds.rowLayout(numberOfColumns=2)
-        cmds.button(label=u"拖拽吸附", command=lambda *args: self.INSTANT_DRAG.instantDrag(),
+        components.button(label=u"拖拽吸附", command=lambda *args: self.INSTANT_DRAG.instantDrag(),
                     width=149, height=28, bgc=self.grey,
                     annotation=u"Ctrl = 5°旋转\n"
                                u"Shift = 复制\n"
                                u"Shift + Ctrl = 对齐到最近边方向")
 
-        cmds.button(label=u"沿最近边对齐", command=lambda *args: self.ALIGN_EDGE.alignEdge(),
+        components.button(label=u"沿最近边对齐", command=lambda *args: self.ALIGN_EDGE.alignEdge(),
                     width=149, height=28, bgc=self.grey)
 
         cmds.setParent('..')
@@ -1635,15 +1624,15 @@ class LingJuGeometryTools:
     def create_pivot_buttons(self):
         cmds.rowLayout(numberOfColumns=3, )
 
-        cmds.button(label=u"冻结", command=self.freeze_pivots,
+        components.button(label=u"冻结", command=self.freeze_pivots,
                     width=90, height=20, bgc=self.inner_grey,
                     annotation=u"坐标系归0")
 
-        cmds.button(label=u"居中", command="cmds.CenterPivot()",
+        components.button(label=u"居中", command="cmds.CenterPivot()",
                     width=90, height=20, bgc=self.inner_grey,
                     annotation=u"坐标移动到物体中心")
 
-        cmds.button(label=u"重置", command=self.reset_pivots,
+        components.button(label=u"重置", command=self.reset_pivots,
                     width=90, height=20, bgc=self.inner_grey,
                     annotation=u"坐标重置到世界中心")
 
@@ -1651,11 +1640,11 @@ class LingJuGeometryTools:
 
         cmds.rowLayout(numberOfColumns=2, )
 
-        cmds.button(label=u"置底", command=self.move_pivot_to_bottom_center,
+        components.button(label=u"置底", command=self.move_pivot_to_bottom_center,
                     width=136, height=20, bgc=self.inner_grey,
                     annotation=u"坐标移动到物体底部中心")
 
-        cmds.button(label=u"物体至世界中心", command=self.snap_to_world_center_bottom,
+        components.button(label=u"物体至世界中心", command=self.snap_to_world_center_bottom,
                     width=136, height=20, bgc=self.inner_grey,
                     annotation=u"物体底部为底移动")
         
@@ -1663,7 +1652,7 @@ class LingJuGeometryTools:
 
         cmds.rowLayout(numberOfColumns=1, )
 
-        cmds.button(label=u"匹配坐标轴", command=self.match_axis_to_first,
+        components.button(label=u"匹配坐标轴", command=self.match_axis_to_first,
                     width=275, height=20, bgc=self.inner_grey,
                     annotation=u"后选物体的坐标轴原点搬到第一个选中物体的 pivot 位置，物体本身不移动")
 
@@ -1694,7 +1683,7 @@ class LingJuGeometryTools:
     def create_pivot_boundary_layout(self):
         """创建嵌入主窗口的物体边界对齐可折叠标签，使用 formLayout 精确定位按钮"""
         # 子 frame：物体边界对齐
-        cmds.frameLayout(label=u"物体边界对齐", width=280,
+        components.section(label=u"物体边界对齐", width=280,
                          bgc=self.inner_grey, collapsable=True, collapse=True,
                          marginWidth=4, marginHeight=4)
 
@@ -1707,27 +1696,27 @@ class LingJuGeometryTools:
         form = cmds.formLayout()
 
         # 创建所有按钮
-        btn_up = cmds.button(label=u"↑", width=arrow_w, height=arrow_h,
+        btn_up = components.button(label=u"↑", width=arrow_w, height=arrow_h,
                              command=lambda *_: self.pivot_move_in_plane("up"),
                              bgc=self.grey_blue)
-        btn_down = cmds.button(label=u"↓", width=arrow_w, height=arrow_h,
+        btn_down = components.button(label=u"↓", width=arrow_w, height=arrow_h,
                                command=lambda *_: self.pivot_move_in_plane("down"),
                                bgc=self.grey_blue)
-        btn_left = cmds.button(label=u"←", width=arrow_w, height=arrow_h,
+        btn_left = components.button(label=u"←", width=arrow_w, height=arrow_h,
                                command=lambda *_: self.pivot_move_in_plane("left"),
                                bgc=self.grey_blue)
-        btn_right = cmds.button(label=u"→", width=arrow_w, height=arrow_h,
+        btn_right = components.button(label=u"→", width=arrow_w, height=arrow_h,
                                 command=lambda *_: self.pivot_move_in_plane("right"),
                                 bgc=self.grey_blue)
 
         # 三个平面按钮，保存UI路径供 pivot_set_plane 改色
-        btn_xy = cmds.button(label="XY", width=plane_w, height=plane_h,
+        btn_xy = components.button(label="XY", width=plane_w, height=plane_h,
                              command=lambda *_: self.pivot_set_plane("xy"),
                              bgc=self.PIVOT_PLANE_COLORS['xy'][1])
-        btn_zy = cmds.button(label="ZY", width=plane_w, height=plane_h,
+        btn_zy = components.button(label="ZY", width=plane_w, height=plane_h,
                              command=lambda *_: self.pivot_set_plane("zy"),
                              bgc=self.PIVOT_PLANE_COLORS['zy'][1])
-        btn_zx = cmds.button(label="ZX", width=plane_w, height=plane_h,
+        btn_zx = components.button(label="ZX", width=plane_w, height=plane_h,
                              command=lambda *_: self.pivot_set_plane("zx"),
                              bgc=self.PIVOT_PLANE_COLORS['zx'][1])
 
@@ -2209,18 +2198,18 @@ class LingJuGeometryTools:
         cmds.rowColumnLayout(nc= 6 ,cw=[(1,20),(2,75),(3,10),(4,75),(5,5),(6,75)])
         cmds.text(l='')
         # 类方法不能用字符串回调（Maya 在全局命名空间执行字符串），改用 lambda 闭包
-        cmds.checkBox('polyEdgeShiftFlattenCheck',label="Flatten", value= 1,cc=lambda *a: self.polyEdgeToggleFlatten())
+        components.check_box('polyEdgeShiftFlattenCheck',label="Flatten", value= 1,cc=lambda *a: self.polyEdgeToggleFlatten())
         cmds.text(l='')
-        cmds.button('PESGo', l= "Go", c = lambda *a: self.polyEdgeShiftRun(),bgc = (0.24, 0.4, 0.25 ))
+        components.button('PESGo', l= "Go", c = lambda *a: self.polyEdgeShiftRun(),bgc = (0.24, 0.4, 0.25 ))
         cmds.text(l='')
-        cmds.button('PESUndo', en=0, l= "Undo", bgc = (0.24, 0.24, 0.24), c = lambda *a: self.PEStempLoadPointData() )
+        components.button('PESUndo', en=0, l= "Undo", bgc = (0.24, 0.24, 0.24), c = lambda *a: self.PEStempLoadPointData() )
         cmds.showWindow(polyEdgeShiftUI)
 
 
     def polyEdgeToggleFlatten(self):
         global polyEdgeShiftFlatten
         if cmds.objExists(polyEdgeShiftFlatten):
-            checkCurrent = cmds.checkBox('polyEdgeShiftFlattenCheck',q=1,value= 1) 
+            checkCurrent = components.check_box('polyEdgeShiftFlattenCheck',q=1,value= 1) 
             if polyEdgeShiftFlatten:
                 if checkCurrent == 1.0:
                     cmds.setAttr(polyEdgeShiftFlatten + ".shapeKeeper", 0)
@@ -2244,9 +2233,9 @@ class LingJuGeometryTools:
         unwwantInnerEdge = []
         keepStartSelection = []
         polyEdgeShiftFlatten = ''
-        cmds.button('PESGo',e=1, en=0,bgc=(0.24, 0.24, 0.24))
-        cmds.button('PESUndo',e=1, en=0,bgc=(0.24, 0.24, 0.24))
-        flattenIt = cmds.checkBox('polyEdgeShiftFlattenCheck',q=1, value= 1) 
+        components.button('PESGo',e=1, en=0,bgc=(0.24, 0.24, 0.24))
+        components.button('PESUndo',e=1, en=0,bgc=(0.24, 0.24, 0.24))
+        flattenIt = components.check_box('polyEdgeShiftFlattenCheck',q=1, value= 1) 
         cleanList = ('cutPlane','snapPlane','showCutCurv*','shapeKeeper','shapeFlatten')
         for c in cleanList:
             if cmds.objExists(c):
@@ -2413,8 +2402,8 @@ class LingJuGeometryTools:
         elif cutFaceSpineEdge:
             mel.eval('doMenuComponentSelectionExt("' + selMesh + '", "edge", 0);')
         
-        cmds.button('PESUndo',e=1, en=1,bgc = (0.4, 0.24, 0.25) )
-        cmds.button('PESGo',e=1, en=1,bgc=(0.24, 0.4, 0.24))
+        components.button('PESUndo',e=1, en=1,bgc = (0.4, 0.24, 0.25) )
+        components.button('PESGo',e=1, en=1,bgc=(0.24, 0.4, 0.24))
         
     def spinCutFace(self, msg, m_plug, otherMplug, clientData):
         #print(m_plug.partialName())
@@ -2609,7 +2598,7 @@ class LingJuGeometryTools:
             for r in dataList:
                 rawData = r.split(',')
                 cmds.move(float(rawData[1]), float(rawData[2]), float(rawData[3]),rawData[0] , a =True, ws=True)
-        cmds.button('PESUndo',e=1, en=0,bgc = (0.24, 0.24, 0.24) )
+        components.button('PESUndo',e=1, en=0,bgc = (0.24, 0.24, 0.24) )
                         
 
     # ------------------------------------------ modeling ------------------------------------------
@@ -3283,7 +3272,7 @@ class LingJuGeometryTools:
         self.pivot_plane = plane
         for p, btn_name in self._pivot_plane_btns.items():
             active_color, inactive_color = self.PIVOT_PLANE_COLORS[p]
-            cmds.button(btn_name, e=True,
+            components.button(btn_name, e=True,
                         bgc=(active_color if p == plane else inactive_color))
 
     # ------------------------------------------ naming ------------------------------------------
