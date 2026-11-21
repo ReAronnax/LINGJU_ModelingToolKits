@@ -5,3 +5,9 @@ __pycache__/
 
 # 历史版本归档（不纳入版本控制，git 历史只保留最新版）
 archive/
+
+# 非本仓库管理的杂项文件
+SGCG_Placement_Tool_v1.1.0/
+checker.py
+pyd/
+*.pdf
